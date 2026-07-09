@@ -25,7 +25,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->index(['manufacturing_order_id', 'product_id']);
+            $table->index(['manufacturing_order_id', 'product_id'], 'mol_mo_id_prod_id_idx');
         });
     }
 

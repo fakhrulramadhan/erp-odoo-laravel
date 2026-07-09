@@ -53,7 +53,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index(['purchase_requisition_id', 'line_number']);
+            $table->index(['purchase_requisition_id', 'line_number'], 'prl_req_id_line_no_idx');
         });
     }
 

@@ -71,7 +71,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->index(['inventory_adjustment_id', 'product_id']);
+            $table->index(['inventory_adjustment_id', 'product_id'], 'ial_adj_id_prod_id_idx');
         });
 
         // Reordering Rules
