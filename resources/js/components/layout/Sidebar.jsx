@@ -196,7 +196,7 @@ export default function Sidebar({ open, onClose }) {
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
                             <Shield className="h-5 w-5 text-white" />
                         </div>
-                        <span className="text-lg font-bold text-white">ERP Odoo</span>
+                        <span className="text-lg font-bold text-white">FLTech ERP</span>
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-white lg:hidden">
                         <X className="h-5 w-5" />
@@ -212,7 +212,7 @@ export default function Sidebar({ open, onClose }) {
 
                 {/* Footer */}
                 <div className="border-t border-gray-800 px-4 py-3">
-                    <p className="text-xs text-gray-500">ERP Odoo v1.0.0</p>
+                    <p className="text-xs text-gray-500">FLTech ERP v1.0.0</p>
                 </div>
             </aside>
         </>
