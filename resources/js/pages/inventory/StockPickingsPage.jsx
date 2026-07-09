@@ -29,7 +29,7 @@ const TYPE_ICONS = {
     outgoing: ArrowUpCircle,
     internal: Package,
 };
-
+// s
 export default function StockPickingsPage() {
     const {
         data: pickings, loading, saving, error, setError,
