@@ -1,0 +1,16 @@
+php artisan serve --host=127.0.0.1 --port=8080
+php artisan serve --host=127.0.0.1 --port=8083
+
+9router bermasalah, tinggal restart aja
+
+Frontend — Besok Lanjut
+Update DataTable.jsx — add sort, actions, cell types
+Create useMasterData.js hook — generic CRUD state management
+Create MasterDataPage.jsx — reusable page component
+Create 10 module pages — config-driven, each ~50 lines
+Update endpoints.js — add masterDataApi
+Update app.jsx — add 10 routes
+Update Sidebar.jsx — add Master Data section
+Build & verify
+
+Semua detail tersimpan di /memories/session/phase1-progress.md — besok tinggal bilang "lanjutkan Phase 1 ERP" dan saya akan langsung tahu posisi terakhir. 👋
