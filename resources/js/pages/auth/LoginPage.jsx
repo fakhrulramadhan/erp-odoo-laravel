@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Button, Input, Alert } from '../../components/ui';
-import { Shield } from 'lucide-react';
+import { Button, Input, Alert, Logo } from '../../components/ui';
 
 export default function LoginPage() {
     const { login } = useAuth();
@@ -30,12 +29,9 @@ export default function LoginPage() {
         <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4">
             <div className="w-full max-w-md">
                 {/* Logo */}
-                <div className="mb-8 text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-200">
-                        <Shield className="h-8 w-8 text-white" />
-                    </div>
-                    <h1 className="mt-4 text-2xl font-bold text-gray-900">FLTech ERP</h1>
-                    <p className="mt-1 text-sm text-gray-500">Sign in to your account</p>
+                <div className="mb-8 flex flex-col items-center">
+                    <Logo size="lg" variant="light" />
+                    <p className="mt-3 text-sm text-gray-500">Sign in to your account</p>
                 </div>
 
                 {/* Form */}

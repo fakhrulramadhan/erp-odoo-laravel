@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Building2, Settings,
-    FileText, Bell, Shield, X, ChevronDown,
+    FileText, Bell, X, ChevronDown,
     Landmark, MapPin, Briefcase, DollarSign,
     Hash, Receipt, Database, Package, Ruler,
     Boxes, Truck, Warehouse, CreditCard, BookOpen,
@@ -9,6 +9,7 @@ import {
     Factory, Wrench, ArrowRightLeft, AlertTriangle,
     UserCheck, Clock, CalendarDays, Banknote, UserPlus, Contact, FileCheck, Timer, ScrollText
 } from 'lucide-react';
+import Logo from '../ui/Logo';
 import { useState } from 'react';
 
 const navigation = [
@@ -192,12 +193,7 @@ export default function Sidebar({ open, onClose }) {
             >
                 {/* Logo */}
                 <div className="flex h-16 items-center justify-between border-b border-gray-800 px-4">
-                    <div className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
-                            <Shield className="h-5 w-5 text-white" />
-                        </div>
-                        <span className="text-lg font-bold text-white">FLTech ERP</span>
-                    </div>
+                    <Logo size="sm" />
                     <button onClick={onClose} className="text-gray-400 hover:text-white lg:hidden">
                         <X className="h-5 w-5" />
                     </button>

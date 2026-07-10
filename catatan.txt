@@ -1,5 +1,13 @@
 php artisan serve --host=127.0.0.1 --port=8080
-php artisan serve --host=127.0.0.1 --port=8083
+php artisan serve --host=127.0.0.1 --port=8083 (jalanin di lokal pakai ini)
+
+
+ada error ini
+:8083/api/v1/settings/departments?per_page=999:1  Failed to load resource: the server responded with a status of 422 (Unprocessable Content)
+di url http://127.0.0.1:8083/hrm/payroll-components
+
+
+enggak bisa export laportan di setiap modul (besok lagi)
 
 9router bermasalah, tinggal restart aja
 

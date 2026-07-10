@@ -10,3 +10,4 @@ export { Modal } from './Modal';
 export { Pagination } from './Pagination';
 export { SearchFilter } from './SearchFilter';
 export { ConfirmDialog } from './ConfirmDialog';
+export { default as Logo } from './Logo';

@@ -1,3 +1,5 @@
+sebeelumnya dari lokal push dulu ke git branch main
+
 cd /var/www/erp.fltech.my.id
 git pull origin main
 composer install --no-dev --optimize-autoloader
