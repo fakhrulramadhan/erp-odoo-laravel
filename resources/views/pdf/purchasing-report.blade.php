@@ -43,7 +43,7 @@
         <tbody>
             @foreach($summary['by_status'] as $status)
             <tr>
-                <td style="text-transform: capitalize;">{{ str_replace('_', ' ', $status['status']) }}</td>
+                <td style="text-transform: capitalize;">{{ $status['status']->label() }}</td>
                 <td class="text-center">{{ $status['count'] }}</td>
                 <td class="text-right">Rp {{ number_format($status['total_value'] ?? 0, 0, ',', '.') }}</td>
             </tr>
@@ -97,9 +97,9 @@
                 <td>{{ $v['vendor_name'] }}</td>
                 <td class="text-center">{{ $v['orders'] }}</td>
                 <td class="text-right">Rp {{ number_format($v['total_spent'] ?? 0, 0, ',', '.') }}</td>
-                <td class="text-center">{{ $v['draft_count'] ?? 0 }}</td>
-                <td class="text-center">{{ $v['approved_count'] ?? 0 }}</td>
-                <td class="text-center">{{ $v['active_count'] ?? 0 }}</td>
+                <td class="text-center">{{ $v['draft'] ?? 0 }}</td>
+                <td class="text-center">{{ $v['approved'] ?? 0 }}</td>
+                <td class="text-center">{{ $v['active'] ?? 0 }}</td>
             </tr>
             @endforeach
         </tbody>

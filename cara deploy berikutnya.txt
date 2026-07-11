@@ -21,3 +21,5 @@ sudo php artisan view:clear
 sudo php artisan view:cache
 sudo systemctl reload nginx
 
+ sudo systemctl reload nginx
+sudo systemctl restart php8.3-fpm 
