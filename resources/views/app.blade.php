@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>FLTech ERP</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     @if(file_exists(public_path('hot')))
         @php($viteUrl = trim(file_get_contents(public_path('hot'))))
         <script type="module">
