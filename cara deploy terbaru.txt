@@ -73,15 +73,20 @@ PRASYARAT
 ----------------------------------------------
   sudo php artisan storage:link
 
-7. CLEAR & CACHE
-----------------
-  sudo php artisan config:clear
+7. CLEAR & CACHE (DOMPDF FIX)
+-------------------------------
+  # ⚠️ PENTING: Pastikan direktori fonts untuk dompdf ada
+  sudo mkdir -p storage/fonts
+  sudo php artisan storage:link
+
+  # Clear semua cache dulu
+  sudo php artisan optimize:clear
+
+  # Cache ulang
   sudo php artisan config:cache
-  sudo php artisan route:clear
   sudo php artisan route:cache
-  sudo php artisan view:clear
   sudo php artisan view:cache
-  sudo php artisan optimize
+  sudo php artisan event:cache
 
 8. SET PERMISSIONS
 ------------------
@@ -136,8 +141,12 @@ Master Data CSV Export
   npm install && \
   npm run build && \
   sudo php artisan migrate --force && \
+  sudo mkdir -p storage/fonts && \
   sudo php artisan storage:link && \
-  sudo php artisan optimize && \
+  sudo php artisan optimize:clear && \
+  sudo php artisan config:cache && \
+  sudo php artisan route:cache && \
+  sudo php artisan view:cache && \
   sudo chown -R www-data:www-data . && \
   sudo chmod -R 775 storage bootstrap/cache && \
   sudo systemctl reload nginx
@@ -155,9 +164,30 @@ Nginx error:
 Cache bermasalah:
   sudo php artisan optimize:clear   (clear semua cache)
 
-PDF tidak muncul:
-  - Pastikan ekstensi PHP "dom" terinstall (php -m | grep dom)
-  - Cek storage link: ls -la public/storage
+PDF / Export tidak muncul di server (padahal di lokal jalan):
+  1. Cek ekstensi PHP DOM (wajib untuk dompdf):
+     php -m | grep dom
+     # Jika tidak ada: sudo apt install php8.2-dom  (sesuaikan versi PHP)
+
+  2. Cek direktori fonts dompdf:
+     ls -la storage/fonts
+     # Jika tidak ada: mkdir -p storage/fonts && chmod 775 storage/fonts
+
+  3. Clear semua cache & rebuild:
+     sudo php artisan optimize:clear
+     sudo php artisan config:cache
+     sudo php artisan route:cache
+     sudo php artisan view:cache
+
+  4. Cek permission storage:
+     sudo chown -R www-data:www-data storage
+     sudo chmod -R 775 storage
+
+  5. Cek log Laravel untuk error spesifik:
+     sudo tail -50 storage/logs/laravel.log | grep -i "error\|pdf\|dompdf\|TypeError"
+
+  6. Restart PHP-FPM setelah install extension:
+     sudo systemctl restart php8.2-fpm
 
 Vite/build error:
   - Pastikan versi Vite = 6.x (cek: npx vite --version)
