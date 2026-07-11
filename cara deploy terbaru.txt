@@ -26,10 +26,18 @@ PRASYARAT
    B. DI SERVER — PULL & DEPLOY
 ================================================================================
 
-1. MASUK KE SERVER & PULL CODE
--------------------------------
+1. MASUK KE SERVER & FIX OWNERSHIP
+--------------------------------------
   ssh user@server
   cd /var/www/erp.fltech.my.id
+
+  # ⚠️ PENTING: Fix ownership dulu — user yang login harus punya akses
+  # Ganti 'ubuntu' dengan username SSH kamu
+  sudo chown -R ubuntu:www-data /var/www/erp.fltech.my.id
+
+  # Safe directory untuk git
+  git config --global --add safe.directory /var/www/erp.fltech.my.id
+
   git pull origin main
 
 2. INSTALL PHP DEPENDENCIES (termasuk dompdf)
@@ -88,8 +96,9 @@ PRASYARAT
   sudo php artisan view:cache
   sudo php artisan event:cache
 
-8. SET PERMISSIONS
-------------------
+8. SET FINAL PERMISSIONS (untuk Nginx)
+-----------------------------------------
+  # Setelah semua selesai, kembalikan ownership ke www-data untuk Nginx
   sudo chown -R www-data:www-data /var/www/erp.fltech.my.id
   sudo chmod -R 775 /var/www/erp.fltech.my.id/storage
   sudo chmod -R 775 /var/www/erp.fltech.my.id/bootstrap/cache
@@ -135,6 +144,8 @@ Master Data CSV Export
 ================================================================================
 
   cd /var/www/erp.fltech.my.id && \
+  sudo chown -R ubuntu:www-data . && \
+  git config --global --add safe.directory /var/www/erp.fltech.my.id && \
   git pull origin main && \
   composer install --no-dev --optimize-autoloader && \
   rm -rf node_modules package-lock.json && \
