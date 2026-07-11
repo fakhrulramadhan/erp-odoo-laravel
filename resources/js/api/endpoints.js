@@ -44,6 +44,34 @@ export const settingsApi = {
     positions: (params) => api.get('/v1/settings/positions', { params }),
 };
 
+// Settings CRUD adapters for useCrudApi hook
+export const settingsBranchesApi = {
+    list: (params) => api.get('/v1/settings/branches', { params }),
+};
+
+export const settingsDepartmentsApi = {
+    list: (params) => api.get('/v1/settings/departments', { params }),
+};
+
+export const settingsPositionsApi = {
+    list: (params) => api.get('/v1/settings/positions', { params }),
+};
+
+export const settingsCurrenciesApi = {
+    list: (params) => api.get('/v1/settings/currencies', { params }),
+    store: (data) => api.post('/v1/settings/currencies', data),
+};
+
+export const settingsTaxSettingsApi = {
+    list: (params) => api.get('/v1/settings/tax-settings', { params }),
+    store: (data) => api.post('/v1/settings/tax-settings', data),
+};
+
+export const settingsNumberingApi = {
+    list: (params) => api.get('/v1/settings/numbering-sequences', { params }),
+    store: (data) => api.post('/v1/settings/numbering-sequences', data),
+};
+
 export const masterDataApi = {
     list: (module, params) => api.get(`/v1/master-data/${module}`, { params }),
     store: (module, data) => api.post(`/v1/master-data/${module}`, data),
@@ -146,6 +174,8 @@ export const inventoryAdjustmentsApi = {
 export const reportsApi = {
     purchasing: (params) => api.get('/v1/reports/purchasing', { params }),
     inventory: (params) => api.get('/v1/reports/inventory', { params }),
+    purchasingPdf: (params) => api.get('/v1/reports/purchasing/pdf', { params, responseType: 'blob' }),
+    inventoryPdf: (params) => api.get('/v1/reports/inventory/pdf', { params, responseType: 'blob' }),
 };
 
 // ─── Phase 4: Manufacturing ──────────────────────

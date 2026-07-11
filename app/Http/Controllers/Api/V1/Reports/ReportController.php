@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Api\V1\Reports;
 use App\Http\Controllers\Controller;
 use App\Models\{PurchaseOrder, PurchaseOrderLine, Vendor, Product, StockQuant, StockPicking, Warehouse};
 use App\Traits\ApiResponse;
-use Illuminate\Http\{Request, JsonResponse};
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\{Request, Response, JsonResponse};
 use Illuminate\Support\Facades\{DB, Schema};
 
 class ReportController extends Controller
@@ -126,7 +127,7 @@ class ReportController extends Controller
         $year = $request->query('year', date('Y'));
 
         $data = PurchaseOrder::select(
-            DB::raw("strftime('%m', order_date) as month"),
+            DB::raw('MONTH(order_date) as month'),
             DB::raw('COUNT(*) as orders'),
             DB::raw('COALESCE(SUM(total), 0) as total_value')
         )
@@ -294,5 +295,180 @@ class ReportController extends Controller
             ]);
 
         return $this->success($data);
+    }
+
+    // ─── PDF Export ────────────────────────────────
+
+    /**
+     * Generate purchasing report PDF.
+     * ?type=summary|by_vendor|by_month|top_products
+     */
+    public function purchasingPdf(Request $request): Response
+    {
+        $companyId = $request->user()->company_id;
+        $type = $request->query('type', 'summary');
+
+        // Gather data (same queries as JSON endpoints)
+        $byStatus = PurchaseOrder::select('status', DB::raw('COUNT(*) as count'), DB::raw('COALESCE(SUM(total), 0) as total_value'))
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->groupBy('status')
+            ->get()
+            ->map(fn($r) => ['status' => $r->status, 'count' => (int) $r->count, 'total_value' => round($r->total_value, 2)]);
+
+        $totals = PurchaseOrder::select(
+            DB::raw('COUNT(*) as total_orders'),
+            DB::raw('COALESCE(SUM(total), 0) as total_value'),
+            DB::raw('COUNT(DISTINCT vendor_id) as unique_vendors')
+        )->when($companyId, fn($q) => $q->where('company_id', $companyId))->first();
+
+        $topVendors = PurchaseOrder::select('vendor_id', DB::raw('COUNT(*) as orders'), DB::raw('COALESCE(SUM(total), 0) as total_spent'))
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->groupBy('vendor_id')
+            ->orderByDesc('total_spent')
+            ->limit(10)
+            ->with('vendor:id,name')
+            ->get()
+            ->map(fn($r) => [
+                'vendor_id' => $r->vendor_id,
+                'vendor_name' => $r->vendor?->name,
+                'orders' => (int) $r->orders,
+                'total_spent' => round($r->total_spent, 2),
+            ]);
+
+        $byVendor = PurchaseOrder::select(
+            'vendor_id', DB::raw('COUNT(*) as orders'), DB::raw('COALESCE(SUM(total), 0) as total_spent'),
+            DB::raw("SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as draft"),
+            DB::raw("SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved"),
+            DB::raw("SUM(CASE WHEN status IN ('ordered','partial_received','received') THEN 1 ELSE 0 END) as active")
+        )->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->groupBy('vendor_id')->orderByDesc('total_spent')->with('vendor:id,name')->get()
+            ->map(fn($r) => [
+                'vendor_name' => $r->vendor?->name, 'orders' => (int) $r->orders,
+                'total_spent' => round($r->total_spent, 2), 'draft' => (int) $r->draft,
+                'approved' => (int) $r->approved, 'active' => (int) $r->active,
+            ]);
+
+        $year = $request->query('year', date('Y'));
+        $byMonth = PurchaseOrder::select(
+            DB::raw('MONTH(order_date) as month'),
+            DB::raw('COUNT(*) as orders'),
+            DB::raw('COALESCE(SUM(total), 0) as total_value')
+        )->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->whereYear('order_date', $year)->groupBy('month')->orderBy('month')->get()
+            ->map(fn($r) => [
+                'month_name' => date('M', mktime(0, 0, 0, (int) $r->month)),
+                'orders' => (int) $r->orders, 'total_value' => round($r->total_value, 2),
+            ]);
+
+        $topProducts = PurchaseOrderLine::select(
+            'product_id', DB::raw('SUM(quantity) as total_qty'),
+            DB::raw('SUM(total) as total_amount'), DB::raw('COUNT(DISTINCT purchase_order_id) as order_count')
+        )->groupBy('product_id')->orderByDesc('total_amount')->limit(20)
+            ->with('product:id,code,name')->get()
+            ->map(fn($r) => [
+                'code' => $r->product?->code, 'name' => $r->product?->name,
+                'total_qty' => round($r->total_qty, 2), 'total_amount' => round($r->total_amount, 2),
+                'order_count' => (int) $r->order_count,
+            ]);
+
+        $pdf = Pdf::loadView('pdf.purchasing-report', [
+            'title' => 'Purchasing Report',
+            'summary' => [
+                'totals' => [
+                    'total_orders' => (int) $totals->total_orders,
+                    'total_value' => round($totals->total_value, 2),
+                    'unique_vendors' => (int) $totals->unique_vendors,
+                ],
+                'by_status' => $byStatus,
+                'top_vendors' => $topVendors,
+            ],
+            'byVendor' => $byVendor,
+            'byMonth' => $byMonth,
+            'topProducts' => $topProducts,
+            'type' => $type,
+            'period' => "Year {$year}",
+        ]);
+
+        return $pdf->download('purchasing-report-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Generate inventory report PDF.
+     * ?type=summary|by_warehouse|low_stock|stock_value
+     */
+    public function inventoryPdf(Request $request): Response
+    {
+        $type = $request->query('type', 'summary');
+
+        // Summary data
+        $totalValue = StockQuant::sum('total_value');
+        $totalQty = StockQuant::sum('quantity');
+        $totalProducts = StockQuant::distinct('product_id')->count('product_id');
+        $totalLocations = StockQuant::distinct('location_id')->count('location_id');
+
+        $lowStockCount = Product::where('is_active', true)
+            ->where('minimum_stock', '>', 0)->get()
+            ->filter(fn($p) => StockQuant::where('product_id', $p->id)->sum('quantity') < $p->minimum_stock)->count();
+
+        $byType = Product::select('type', DB::raw('COUNT(*) as count'))
+            ->where('is_active', true)->groupBy('type')->get()
+            ->map(fn($r) => ['type' => $r->type, 'count' => (int) $r->count]);
+
+        $topLocations = StockQuant::select('location_id', DB::raw('SUM(total_value) as value'), DB::raw('SUM(quantity) as qty'))
+            ->groupBy('location_id')->orderByDesc('value')->limit(10)
+            ->with('location:id,name')->get()
+            ->map(fn($r) => [
+                'location_id' => $r->location_id, 'location_name' => $r->location?->name,
+                'value' => round($r->value, 2), 'quantity' => round($r->qty, 2),
+            ]);
+
+        // By warehouse
+        $byWarehouse = StockQuant::select('location_id', DB::raw('COUNT(DISTINCT product_id) as product_count'),
+            DB::raw('SUM(quantity) as total_qty'), DB::raw('SUM(reserved_quantity) as reserved_qty'), DB::raw('SUM(total_value) as total_value')
+        )->groupBy('location_id')->orderByDesc('total_value')->with('location:id,name')->get()
+            ->map(fn($r) => [
+                'location_id' => $r->location_id, 'location_name' => $r->location?->name,
+                'product_count' => (int) $r->product_count, 'total_qty' => round($r->total_qty, 2),
+                'reserved_qty' => round($r->reserved_qty, 2), 'total_value' => round($r->total_value, 2),
+            ]);
+
+        // Low stock
+        $lowStock = Product::where('is_active', true)->where('minimum_stock', '>', 0)->get()
+            ->map(function ($product) {
+                $onHand = StockQuant::where('product_id', $product->id)->sum('quantity');
+                return [
+                    'code' => $product->code, 'name' => $product->name,
+                    'on_hand' => round($onHand, 2), 'minimum_stock' => $product->minimum_stock,
+                    'deficit' => round($product->minimum_stock - $onHand, 2),
+                    'restock_value' => round(($product->minimum_stock - $onHand) * $product->purchase_price, 2),
+                ];
+            })
+            ->filter(fn($p) => $p['on_hand'] < $p['minimum_stock'])->sortByDesc('deficit')->values();
+
+        // Stock value by product
+        $stockValue = StockQuant::select('product_id', DB::raw('SUM(quantity) as total_qty'), DB::raw('SUM(total_value) as total_value'))
+            ->groupBy('product_id')->orderByDesc('total_value')
+            ->with('product:id,code,name,category_id')->with('product.category:id,name')->get()
+            ->map(fn($r) => [
+                'code' => $r->product?->code, 'name' => $r->product?->name,
+                'category' => $r->product?->category?->name,
+                'quantity' => round($r->total_qty, 2), 'total_value' => round($r->total_value, 2),
+            ]);
+
+        $pdf = Pdf::loadView('pdf.inventory-report', [
+            'title' => 'Inventory Report',
+            'summary' => [
+                'totals' => [
+                    'total_value' => round($totalValue, 2), 'total_quantity' => round($totalQty, 2),
+                    'total_products' => $totalProducts, 'total_locations' => $totalLocations,
+                    'low_stock_count' => $lowStockCount,
+                ],
+                'by_type' => $byType, 'top_locations' => $topLocations,
+            ],
+            'byWarehouse' => $byWarehouse, 'lowStock' => $lowStock, 'stockValue' => $stockValue,
+            'type' => $type, 'period' => 'Current',
+        ]);
+
+        return $pdf->download('inventory-report-' . now()->format('Y-m-d') . '.pdf');
     }
 }

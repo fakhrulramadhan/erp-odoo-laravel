@@ -241,6 +241,8 @@ Route::prefix('v1')->group(function () {
         Route::prefix('reports')->group(function () {
             Route::get('purchasing', [ReportController::class, 'purchasing']);
             Route::get('inventory', [ReportController::class, 'inventory']);
+            Route::get('purchasing/pdf', [ReportController::class, 'purchasingPdf']);
+            Route::get('inventory/pdf', [ReportController::class, 'inventoryPdf']);
         });
 
         // ─── Phase 4: Manufacturing ─────────────────

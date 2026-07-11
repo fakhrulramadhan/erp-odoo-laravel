@@ -1,0 +1,167 @@
+================================================================================
+   DEPLOY GUIDE — FLTech ERP (erp.fltech.my.id)
+   Terakhir diupdate: 2026-07-11
+================================================================================
+
+PRASYARAT
+---------
+- PHP 8.2+ dengan extension: bcmath, ctype, curl, dom, fileinfo, gd, mbstring,
+  pdo_mysql, tokenizer, xml, zip
+- MySQL 8.0+ / MariaDB 10.6+
+- Node.js 18+ dan npm 9+
+- Composer 2.x
+- Git
+- Nginx (production)
+
+================================================================================
+   A. DARI LOKAL — PUSH KE GIT
+================================================================================
+
+  cd "c:\appverse 9router\erp-odoo-laravel"
+  git add .
+  git commit -m "deskripsi perubahan"
+  git push -u origin main
+
+================================================================================
+   B. DI SERVER — PULL & DEPLOY
+================================================================================
+
+1. MASUK KE SERVER & PULL CODE
+-------------------------------
+  ssh user@server
+  cd /var/www/erp.fltech.my.id
+  git pull origin main
+
+2. INSTALL PHP DEPENDENCIES (termasuk dompdf)
+----------------------------------------------
+  composer install --no-dev --optimize-autoloader
+
+  # Jika composer versi lama, jalankan dulu:
+  # composer self-update
+
+3. INSTALL NODE DEPENDENCIES & BUILD FRONTEND
+----------------------------------------------
+  rm -rf node_modules package-lock.json
+  npm install
+  npm run build
+
+  # ⚠️ PENTING: Gunakan npm install (bukan npm ci) untuk menghindari
+  #    auto-upgrade ke Vite 8 yang tidak kompatibel dengan @vitejs/plugin-react.
+  #    Vite 6.x adalah versi stabil untuk project ini.
+
+4. SET ENVIRONMENT
+------------------
+  cp .env.example .env   (hanya jika .env belum ada)
+  php artisan key:generate (hanya jika APP_KEY kosong)
+
+  # Edit .env, pastikan:
+  #   APP_ENV=production
+  #   APP_DEBUG=false
+  #   APP_URL=https://erp.fltech.my.id
+  #   DB_CONNECTION=mysql
+  #   DB_HOST=127.0.0.1
+  #   DB_PORT=3306
+  #   DB_DATABASE=erp_odoo
+  #   DB_USERNAME=...
+  #   DB_PASSWORD=...
+
+5. DATABASE MIGRATION
+---------------------
+  sudo php artisan migrate --force
+
+6. STORAGE LINK (untuk file upload, PDF, dsb)
+----------------------------------------------
+  sudo php artisan storage:link
+
+7. CLEAR & CACHE
+----------------
+  sudo php artisan config:clear
+  sudo php artisan config:cache
+  sudo php artisan route:clear
+  sudo php artisan route:cache
+  sudo php artisan view:clear
+  sudo php artisan view:cache
+  sudo php artisan optimize
+
+8. SET PERMISSIONS
+------------------
+  sudo chown -R www-data:www-data /var/www/erp.fltech.my.id
+  sudo chmod -R 775 /var/www/erp.fltech.my.id/storage
+  sudo chmod -R 775 /var/www/erp.fltech.my.id/bootstrap/cache
+
+9. RESTART SERVICES
+-------------------
+  sudo systemctl reload nginx
+  sudo systemctl restart php8.2-fpm   (sesuaikan versi PHP)
+
+================================================================================
+   C. DEPENDENSI KHUSUS
+================================================================================
+
+PDF Export (barryvdh/laravel-dompdf ^3.1)
+------------------------------------------
+  Sudah termasuk di composer.json. Tidak perlu install manual.
+  Package ini digunakan untuk:
+  - Export PDF laporan Purchasing
+  - Export PDF laporan Inventory
+  - Daftar di: composer.json → "barryvdh/laravel-dompdf": "^3.1"
+
+  Route PDF:
+  - GET /api/v1/reports/purchasing/pdf
+  - GET /api/v1/reports/inventory/pdf
+
+  Template Blade:
+  - resources/views/pdf/layout.blade.php
+  - resources/views/pdf/purchasing-report.blade.php
+  - resources/views/pdf/inventory-report.blade.php
+
+Master Data CSV Export
+-----------------------
+  Backend sudah support export CSV untuk semua modul Master Data.
+  Route: GET /api/v1/master-data/{module}/export
+
+  Modul yang support export:
+  - Product Categories, Unit of Measures, Products, Customers, Vendors,
+    Warehouses, Stock Locations, Bank Accounts, Payment Methods,
+    Chart of Accounts
+
+================================================================================
+   D. QUICK DEPLOY (semua command dalam 1 blok)
+================================================================================
+
+  cd /var/www/erp.fltech.my.id && \
+  git pull origin main && \
+  composer install --no-dev --optimize-autoloader && \
+  rm -rf node_modules package-lock.json && \
+  npm install && \
+  npm run build && \
+  sudo php artisan migrate --force && \
+  sudo php artisan storage:link && \
+  sudo php artisan optimize && \
+  sudo chown -R www-data:www-data . && \
+  sudo chmod -R 775 storage bootstrap/cache && \
+  sudo systemctl reload nginx
+
+================================================================================
+   E. TROUBLESHOOTING
+================================================================================
+
+Laravel log:
+  tail -f /var/www/erp.fltech.my.id/storage/logs/laravel.log
+
+Nginx error:
+  sudo tail -f /var/log/nginx/error.log
+
+Cache bermasalah:
+  sudo php artisan optimize:clear   (clear semua cache)
+
+PDF tidak muncul:
+  - Pastikan ekstensi PHP "dom" terinstall (php -m | grep dom)
+  - Cek storage link: ls -la public/storage
+
+Vite/build error:
+  - Pastikan versi Vite = 6.x (cek: npx vite --version)
+  - Jika terlanjur upgrade ke 8.x, hapus node_modules + lock, lalu:
+    npm install vite@6 @vitejs/plugin-react@4
+
+================================================================================

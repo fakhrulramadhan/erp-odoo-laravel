@@ -77,6 +77,16 @@ import ApplicantsPage from './pages/hrm/ApplicantsPage';
 import InterviewsPage from './pages/hrm/InterviewsPage';
 import ExpenseClaimsPage from './pages/hrm/ExpenseClaimsPage';
 
+// Settings Pages
+import SettingsUsersPage from './pages/settings/SettingsUsersPage';
+import SettingsCompaniesPage from './pages/settings/SettingsCompaniesPage';
+import SettingsBranchesPage from './pages/settings/SettingsBranchesPage';
+import SettingsDepartmentsPage from './pages/settings/SettingsDepartmentsPage';
+import SettingsPositionsPage from './pages/settings/SettingsPositionsPage';
+import SettingsCurrenciesPage from './pages/settings/SettingsCurrenciesPage';
+import SettingsTaxesPage from './pages/settings/SettingsTaxesPage';
+import SettingsNumberingPage from './pages/settings/SettingsNumberingPage';
+
 function ProtectedRoute() {
     const { user, loading } = useAuth();
 
@@ -184,6 +194,16 @@ export default function App() {
                         <Route path="/hrm/applicants" element={<ApplicantsPage />} />
                         <Route path="/hrm/interviews" element={<InterviewsPage />} />
                         <Route path="/hrm/expense-claims" element={<ExpenseClaimsPage />} />
+
+                        {/* Settings */}
+                        <Route path="/settings/users" element={<SettingsUsersPage />} />
+                        <Route path="/settings/companies" element={<SettingsCompaniesPage />} />
+                        <Route path="/settings/branches" element={<SettingsBranchesPage />} />
+                        <Route path="/settings/departments" element={<SettingsDepartmentsPage />} />
+                        <Route path="/settings/positions" element={<SettingsPositionsPage />} />
+                        <Route path="/settings/currencies" element={<SettingsCurrenciesPage />} />
+                        <Route path="/settings/taxes" element={<SettingsTaxesPage />} />
+                        <Route path="/settings/numbering" element={<SettingsNumberingPage />} />
                     </Route>
 
                     {/* Catch all */}

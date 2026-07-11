@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Download, Upload } from 'lucide-react';
 import { DataTable, Pagination, SearchFilter, Button, Modal, Alert, ConfirmDialog } from '../../components/ui';
 import { useMasterData } from '../../hooks/useMasterData';
+import { masterDataApi } from '../../api/endpoints';
 import MasterDataForm from './MasterDataForm';
 
 export default function MasterDataPage({ config }) {
@@ -22,6 +23,32 @@ export default function MasterDataPage({ config }) {
     const [editItem, setEditItem] = useState(null);
     const [deleteItem, setDeleteItem] = useState(null);
     const [formErrors, setFormErrors] = useState({});
+    const [exporting, setExporting] = useState(false);
+
+    const handleExport = async () => {
+        setExporting(true);
+        try {
+            const res = await masterDataApi.export(moduleName, {
+                search: search || undefined,
+                ...Object.fromEntries(
+                    Object.entries(filterValues).filter(([, v]) => v !== '' && v != null)
+                ),
+            });
+            const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${moduleName}_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Failed to export:', err);
+            alert('Failed to export data');
+        } finally {
+            setExporting(false);
+        }
+    };
 
     const handleCreate = () => {
         setEditItem(null);
@@ -120,9 +147,9 @@ export default function MasterDataPage({ config }) {
                 </div>
                 <div className="flex items-center gap-2">
                     {exportable && (
-                        <Button variant="secondary" size="sm">
+                        <Button variant="secondary" size="sm" onClick={handleExport} disabled={exporting}>
                             <Download className="h-4 w-4 mr-1" />
-                            Export
+                            {exporting ? 'Exporting...' : 'Export'}
                         </Button>
                     )}
                     <Button onClick={handleCreate}>

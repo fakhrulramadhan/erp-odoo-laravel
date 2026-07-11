@@ -7,7 +7,7 @@ import { formatCurrency } from '../../components/ui/StatusBadge';
 import {
     ShoppingCart, Package, TrendingUp, Users,
     BarChart3, AlertTriangle, ArrowRight,
-    Warehouse, DollarSign, FileText
+    Warehouse, DollarSign, FileText, Download
 } from 'lucide-react';
 
 const TABS = [
@@ -26,7 +26,30 @@ export default function ReportsPage() {
     const [invLowStock, setInvLowStock] = useState([]);
     const [loading, setLoading] = useState(true);
     const [subLoading, setSubLoading] = useState({});
+    const [exporting, setExporting] = useState(false);
     const navigate = useNavigate();
+
+    const handleExportPdf = async (type) => {
+        setExporting(true);
+        try {
+            const res = type === 'purchasing'
+                ? await reportsApi.purchasingPdf()
+                : await reportsApi.inventoryPdf();
+            const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${type}-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error(`Failed to export ${type} PDF:`, err);
+            alert(`Failed to export PDF: ${err.response?.data?.message || err.message}`);
+        } finally {
+            setExporting(false);
+        }
+    };
 
     useEffect(() => { loadSummary(); }, []);
 
@@ -105,9 +128,23 @@ export default function ReportsPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-                <p className="text-sm text-gray-500">Business intelligence and data analytics</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+                    <p className="text-sm text-gray-500">Business intelligence and data analytics</p>
+                </div>
+                <button
+                    onClick={() => handleExportPdf(activeTab)}
+                    disabled={exporting}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                    {exporting ? (
+                        <Spinner size="sm" />
+                    ) : (
+                        <Download className="h-4 w-4" />
+                    )}
+                    Export {activeTab === 'purchasing' ? 'Purchasing' : 'Inventory'} PDF
+                </button>
             </div>
 
             {/* Tab Navigation */}
