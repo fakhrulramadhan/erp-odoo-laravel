@@ -1,0 +1,125 @@
+================================================================================
+   DEPLOY DARI NOL — FLTech ERP (erp.fltech.my.id)
+   Termasuk: hapus database lama, migrate ulang, seed ulang
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ A. DI LOKAL — PUSH KE GIT                                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  cd "c:\appverse 9router\erp-odoo-laravel"
+  git add .
+  git commit -m "fix: settings controller & deploy ulang"
+  git push -u origin main
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ B. DI SERVER — DEPLOY ULANG DARI NOL                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+1. SSH KE SERVER
+-----------------
+  ssh ubuntu@<IP-SERVER>
+
+
+2. HAPUS DATABASE LAMA & BUAT BARU
+-------------------------------------
+  sudo mysql -u root -p
+
+  # Di dalam MySQL shell:
+  DROP DATABASE IF EXISTS erp_odoo;
+  CREATE DATABASE erp_odoo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+  # Buat user jika belum ada (sesuaikan password):
+  CREATE USER IF NOT EXISTS 'erp_user'@'localhost' IDENTIFIED BY 'PASSWORD_KAMU';
+  GRANT ALL PRIVILEGES ON erp_odoo.* TO 'erp_user'@'localhost';
+  FLUSH PRIVILEGES;
+  EXIT;
+
+
+3. FIX OWNERSHIP & PULL CODE
+------------------------------
+  cd /var/www/erp.fltech.my.id
+  sudo chown -R ubuntu:www-data /var/www/erp.fltech.my.id
+  git config --global --add safe.directory /var/www/erp.fltech.my.id
+  git pull origin main
+
+
+4. SETUP .ENV
+--------------
+  # pastikan .env isinya sesuai, terutama DB:
+  nano .env
+
+  # Pastikan isinya:
+  #   APP_ENV=production
+  #   APP_DEBUG=false
+  #   APP_URL=https://erp.fltech.my.id
+  #   DB_CONNECTION=mysql
+  #   DB_HOST=127.0.0.1
+  #   DB_PORT=3306
+  #   DB_DATABASE=erp_odoo
+  #   DB_USERNAME=erp_user
+  #   DB_PASSWORD=PASSWORD_KAMU
+
+
+5. INSTALL DEPENDENCIES
+------------------------
+  composer install --no-dev --optimize-autoloader
+
+  # ⚠️ Hanya jika ada perubahan frontend:
+  rm -rf node_modules package-lock.json
+  npm install
+  npm run build
+
+
+6. MIGRATE & SEED DATABASE
+----------------------------
+  sudo php artisan migrate:fresh --seed --force
+
+  # Jika tidak mau seed, cukup migrate saja:
+  # sudo php artisan migrate --force
+
+
+7. STORAGE & PERMISSIONS
+--------------------------
+  sudo mkdir -p storage/fonts
+  sudo php artisan storage:link
+
+
+8. OPTIMIZE CACHE
+-------------------
+  sudo php artisan optimize:clear
+  sudo php artisan config:cache
+  sudo php artisan route:cache
+  sudo php artisan view:cache
+  sudo php artisan event:cache
+
+
+9. SET OWNERSHIP KE WWW-DATA (untuk Nginx)
+---------------------------------------------
+  sudo chown -R www-data:www-data /var/www/erp.fltech.my.id
+  sudo chmod -R 775 /var/www/erp.fltech.my.id/storage
+  sudo chmod -R 775 /var/www/erp.fltech.my.id/bootstrap/cache
+
+
+10. RESTART SERVICES
+---------------------
+  sudo systemctl reload nginx
+  sudo systemctl restart php8.3-fpm
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ C. CEK ERROR LOG                                                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  # Lihat error terbaru
+  tail -50 /var/www/erp.fltech.my.id/storage/logs/laravel.log
+
+  # Pantau real-time
+  tail -f /var/www/erp.fltech.my.id/storage/logs/laravel.log
+
+  # Cari error spesifik
+  grep -i "error\|exception" /var/www/erp.fltech.my.id/storage/logs/laravel.log | tail -20
+
+  # Clear log (kalau terlalu besar)
+  sudo truncate -s 0 /var/www/erp.fltech.my.id/storage/logs/laravel.log
