@@ -106,7 +106,7 @@ PRASYARAT
 9. RESTART SERVICES
 -------------------
   sudo systemctl reload nginx
-  sudo systemctl restart php8.2-fpm   (sesuaikan versi PHP)
+  sudo systemctl restart php8.3-fpm   (sesuaikan versi PHP)
 
 ================================================================================
    C. DEPENDENSI KHUSUS

@@ -27,11 +27,31 @@ class SettingsController extends Controller
         protected SettingService $settingService
     ) {}
 
+    /**
+     * Get company_id from authenticated user, with fallback to first company.
+     */
+    private function getCompanyId(Request $request): int
+    {
+        $companyId = $request->user()?->company_id;
+
+        if (!$companyId) {
+            $companyId = \App\Models\Company::query()->value('id');
+        }
+
+        if (!$companyId) {
+            abort(422, 'No company found. Please create a company first.');
+        }
+
+        return (int) $companyId;
+    }
+
     // ─── Users ──────────────────────────────────────
 
     public function users(Request $request): JsonResponse
     {
-        $users = $this->userService->list($request->all());
+        $filters = $request->except(['page', 'per_page']);
+        $perPage = $request->get('per_page', 15);
+        $users = $this->userService->list($filters, $perPage);
 
         return $this->paginated(UserResource::collection($users));
     }
@@ -68,7 +88,9 @@ class SettingsController extends Controller
 
     public function companies(Request $request): JsonResponse
     {
-        $companies = $this->companyService->list($request->all());
+        $filters = $request->except(['page', 'per_page']);
+        $perPage = $request->get('per_page', 15);
+        $companies = $this->companyService->list($filters, $perPage);
 
         return $this->paginated(CompanyResource::collection($companies));
     }
@@ -105,7 +127,7 @@ class SettingsController extends Controller
 
     public function currencies(Request $request): JsonResponse
     {
-        return $this->success($this->settingService->currencies());
+        return $this->paginated($this->settingService->currencies($request->get('per_page', 15)));
     }
 
     public function storeCurrency(Request $request): JsonResponse
@@ -126,17 +148,14 @@ class SettingsController extends Controller
 
     public function taxSettings(Request $request): JsonResponse
     {
-        $request->validate(['company_id' => 'required|exists:companies,id']);
-
-        return $this->success(
-            $this->settingService->taxSettings($request->company_id)
+        return $this->paginated(
+            $this->settingService->taxSettings($this->getCompanyId($request), $request->get('per_page', 15))
         );
     }
 
     public function storeTaxSetting(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'company_id' => 'required|exists:companies,id',
             'name' => 'required|string|max:255',
             'code' => 'nullable|string|max:50',
             'rate' => 'required|numeric|min:0|max:100',
@@ -145,6 +164,8 @@ class SettingsController extends Controller
             'description' => 'nullable|string',
         ]);
 
+        $validated['company_id'] = $this->getCompanyId($request);
+
         return $this->created($this->settingService->createTaxSetting($validated));
     }
 
@@ -152,17 +173,14 @@ class SettingsController extends Controller
 
     public function numberingSequences(Request $request): JsonResponse
     {
-        $request->validate(['company_id' => 'required|exists:companies,id']);
-
-        return $this->success(
-            $this->settingService->numberingSequences($request->company_id)
+        return $this->paginated(
+            $this->settingService->numberingSequences($this->getCompanyId($request), $request->get('per_page', 15))
         );
     }
 
     public function storeNumberingSequence(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'company_id' => 'required|exists:companies,id',
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:numbering_sequences,code',
             'prefix' => 'nullable|string|max:20',
@@ -170,6 +188,8 @@ class SettingsController extends Controller
             'padding' => 'integer|min:1|max:20',
             'reset_yearly' => 'boolean',
         ]);
+
+        $validated['company_id'] = $this->getCompanyId($request);
 
         return $this->created($this->settingService->createNumberingSequence($validated));
     }
@@ -185,28 +205,22 @@ class SettingsController extends Controller
 
     public function branches(Request $request): JsonResponse
     {
-        $request->validate(['company_id' => 'required|exists:companies,id']);
-
-        return $this->success(
-            $this->settingService->branches($request->company_id)
+        return $this->paginated(
+            $this->settingService->branches($this->getCompanyId($request), $request->get('per_page', 15))
         );
     }
 
     public function departments(Request $request): JsonResponse
     {
-        $request->validate(['company_id' => 'required|exists:companies,id']);
-
-        return $this->success(
-            $this->settingService->departments($request->company_id)
+        return $this->paginated(
+            $this->settingService->departments($this->getCompanyId($request), $request->get('per_page', 15))
         );
     }
 
     public function positions(Request $request): JsonResponse
     {
-        $request->validate(['company_id' => 'required|exists:companies,id']);
-
-        return $this->success(
-            $this->settingService->positions($request->company_id)
+        return $this->paginated(
+            $this->settingService->positions($this->getCompanyId($request), $request->get('per_page', 15))
         );
     }
 }
