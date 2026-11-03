@@ -24,9 +24,9 @@ class CmsPageResource extends JsonResource
             'status' => $this->status,
             'published_at' => $this->published_at?->toIso8601String(),
             'author_id' => $this->author_id,
-            'author' => new UserResource($this->whenLoaded('author')),
+            'author' => UserResource::make($this->whenLoaded('author')),
             'company_id' => $this->company_id,
-            'company' => new CompanyResource($this->whenLoaded('company')),
+            'company' => CompanyResource::make($this->whenLoaded('company')),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];

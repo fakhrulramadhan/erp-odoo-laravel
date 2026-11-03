@@ -290,10 +290,9 @@ class MasterDataController extends Controller
         $sortField = in_array($request->input('sort'), $config['sortable'] ?? [])
             ? $request->input('sort')
             : 'created_at';
-        $sortDir = $request->input('direction', 'desc');
+        $sortDir = strtolower($request->input('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortField, $sortDir);
-
-        $perPage = min((int) $request->input('per_page', 15), 100);
+        $perPage = min(max((int) $request->input('per_page', 15), 1), 100);
         $data    = $query->paginate($perPage);
 
         return $this->paginated($config['resource']::collection($data));
@@ -375,8 +374,11 @@ class MasterDataController extends Controller
             'is_active'   => !$model->is_active,
             'updated_by'  => $request->user()->id,
         ]);
-
-        return $this->success(new $config['resource']($model->fresh()));
+        $model = $model->fresh();
+        if (!empty($config['relations'])) {
+            $model->load($config['relations']);
+        }
+        return $this->success(new $config['resource']($model));
     }
 
     public function export(Request $request, string $module)

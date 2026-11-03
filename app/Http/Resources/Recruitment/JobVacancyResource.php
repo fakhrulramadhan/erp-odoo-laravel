@@ -35,9 +35,9 @@ class JobVacancyResource extends JsonResource
             'closing_date' => $this->closing_date?->toDateString(),
             'status' => $this->status,
             'company_id' => $this->company_id,
-            'company' => new CompanyResource($this->whenLoaded('company')),
+            'company' => CompanyResource::make($this->whenLoaded('company')),
             'branch_id' => $this->branch_id,
-            'branch' => new BranchResource($this->whenLoaded('branch')),
+            'branch' => BranchResource::make($this->whenLoaded('branch')),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];

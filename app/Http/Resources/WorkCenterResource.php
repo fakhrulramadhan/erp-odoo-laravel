@@ -15,7 +15,7 @@ class WorkCenterResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'branch_id' => $this->branch_id,
-            'branch' => new BranchResource($this->whenLoaded('branch')),
+            'branch' => BranchResource::make($this->whenLoaded('branch')),
             'capacity_per_hour' => (float) ($this->capacity_per_hour ?? 0),
             'cost_per_hour' => (float) ($this->cost_per_hour ?? 0),
             'efficiency' => (float) ($this->efficiency ?? 100),
@@ -23,7 +23,7 @@ class WorkCenterResource extends JsonResource
             'operators' => UserResource::collection($this->whenLoaded('operators')),
             'equipment' => EquipmentResource::collection($this->whenLoaded('equipment')),
             'created_by' => $this->created_by,
-            'creator' => new UserResource($this->whenLoaded('creator')),
+            'creator' => UserResource::make($this->whenLoaded('creator')),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

@@ -15,7 +15,7 @@ class EcommerceOrderResource extends JsonResource
             'id' => $this->id,
             'order_number' => $this->order_number,
             'customer_id' => $this->customer_id,
-            'customer' => new CustomerResource($this->whenLoaded('customer')),
+            'customer' => CustomerResource::make($this->whenLoaded('customer')),
             'status' => $this->status,
             'subtotal' => (float) $this->subtotal,
             'shipping_cost' => (float) $this->shipping_cost,
@@ -37,7 +37,7 @@ class EcommerceOrderResource extends JsonResource
             'promo_code' => $this->whenLoaded('promoCode'),
             'lines' => $this->whenLoaded('lines'),
             'company_id' => $this->company_id,
-            'company' => new CompanyResource($this->whenLoaded('company')),
+            'company' => CompanyResource::make($this->whenLoaded('company')),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];

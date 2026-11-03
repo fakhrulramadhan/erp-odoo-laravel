@@ -14,9 +14,9 @@ class EmployeeSalaryResource extends JsonResource
         return [
             'id' => $this->id,
             'employee_id' => $this->employee_id,
-            'employee' => new EmployeeResource($this->whenLoaded('employee')),
+            'employee' => EmployeeResource::make($this->whenLoaded('employee')),
             'salary_structure_id' => $this->salary_structure_id,
-            'salary_structure' => new SalaryStructureResource($this->whenLoaded('salaryStructure')),
+            'salary_structure' => SalaryStructureResource::make($this->whenLoaded('salaryStructure')),
             'basic_salary' => (float) $this->basic_salary,
             'gross_salary' => (float) $this->gross_salary,
             'net_salary' => (float) $this->net_salary,
@@ -24,7 +24,7 @@ class EmployeeSalaryResource extends JsonResource
             'end_date' => $this->end_date?->toDateString(),
             'is_active' => $this->is_active,
             'company_id' => $this->company_id,
-            'company' => new CompanyResource($this->whenLoaded('company')),
+            'company' => CompanyResource::make($this->whenLoaded('company')),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];

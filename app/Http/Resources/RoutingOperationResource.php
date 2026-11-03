@@ -15,7 +15,7 @@ class RoutingOperationResource extends JsonResource
             'sequence' => $this->sequence,
             'name' => $this->name,
             'work_center_id' => $this->work_center_id,
-            'work_center' => new WorkCenterResource($this->whenLoaded('workCenter')),
+            'work_center' => WorkCenterResource::make($this->whenLoaded('workCenter')),
             'duration_minutes' => (float) ($this->duration_minutes ?? 0),
             'setup_time_minutes' => (float) ($this->setup_time_minutes ?? 0),
             'cost_per_hour' => (float) ($this->cost_per_hour ?? 0),

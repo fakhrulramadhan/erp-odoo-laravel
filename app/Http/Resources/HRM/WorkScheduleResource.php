@@ -19,7 +19,7 @@ class WorkScheduleResource extends JsonResource
             'is_flexible' => $this->is_flexible,
             'days_of_week' => $this->days_of_week,
             'company_id' => $this->company_id,
-            'company' => new CompanyResource($this->whenLoaded('company')),
+            'company' => CompanyResource::make($this->whenLoaded('company')),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];

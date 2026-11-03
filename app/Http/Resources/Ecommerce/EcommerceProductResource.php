@@ -14,7 +14,7 @@ class EcommerceProductResource extends JsonResource
         return [
             'id' => $this->id,
             'product_id' => $this->product_id,
-            'product' => new ProductResource($this->whenLoaded('product')),
+            'product' => ProductResource::make($this->whenLoaded('product')),
             'slug' => $this->slug,
             'short_description' => $this->short_description,
             'long_description' => $this->long_description,
@@ -31,7 +31,7 @@ class EcommerceProductResource extends JsonResource
             'variants' => $this->whenLoaded('variants'),
             'reviews' => ProductReviewResource::collection($this->whenLoaded('reviews')),
             'company_id' => $this->company_id,
-            'company' => new CompanyResource($this->whenLoaded('company')),
+            'company' => CompanyResource::make($this->whenLoaded('company')),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];

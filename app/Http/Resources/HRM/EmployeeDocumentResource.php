@@ -12,7 +12,7 @@ class EmployeeDocumentResource extends JsonResource
         return [
             'id' => $this->id,
             'employee_id' => $this->employee_id,
-            'employee' => new EmployeeResource($this->whenLoaded('employee')),
+            'employee' => EmployeeResource::make($this->whenLoaded('employee')),
             'document_type' => $this->document_type,
             'title' => $this->title,
             'file_path' => $this->file_path,

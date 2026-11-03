@@ -21,7 +21,7 @@ class WorkflowResource extends JsonResource
             'is_active' => $this->is_active,
             'steps' => $this->whenLoaded('steps'),
             'company_id' => $this->company_id,
-            'company' => new CompanyResource($this->whenLoaded('company')),
+            'company' => CompanyResource::make($this->whenLoaded('company')),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];

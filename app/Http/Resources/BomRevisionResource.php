@@ -16,7 +16,7 @@ class BomRevisionResource extends JsonResource
             'description' => $this->description,
             'changes' => $this->changes,
             'created_by' => $this->created_by,
-            'creator' => new UserResource($this->whenLoaded('creator')),
+            'creator' => UserResource::make($this->whenLoaded('creator')),
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

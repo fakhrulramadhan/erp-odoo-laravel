@@ -17,10 +17,10 @@ class WarehouseResource extends JsonResource
             'city'       => $this->city,
             'phone'      => $this->phone,
             'pic_id'     => $this->pic_id,
-            'pic'        => new UserResource($this->whenLoaded('pic')),
+            'pic'        => UserResource::make($this->whenLoaded('pic')),
             'is_main'    => $this->is_main,
             'is_active'  => $this->is_active,
-            'creator'    => new UserResource($this->whenLoaded('creator')),
+            'creator'    => UserResource::make($this->whenLoaded('creator')),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

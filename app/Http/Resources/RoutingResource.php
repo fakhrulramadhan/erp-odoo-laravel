@@ -17,7 +17,7 @@ class RoutingResource extends JsonResource
             'is_active' => (bool) $this->is_active,
             'operations' => RoutingOperationResource::collection($this->whenLoaded('operations')),
             'created_by' => $this->created_by,
-            'creator' => new UserResource($this->whenLoaded('creator')),
+            'creator' => UserResource::make($this->whenLoaded('creator')),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

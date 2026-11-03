@@ -23,7 +23,7 @@ class PayrollComponentResource extends JsonResource
             'is_active' => $this->is_active,
             'description' => $this->description,
             'company_id' => $this->company_id,
-            'company' => new CompanyResource($this->whenLoaded('company')),
+            'company' => CompanyResource::make($this->whenLoaded('company')),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];

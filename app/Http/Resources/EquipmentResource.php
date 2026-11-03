@@ -15,7 +15,7 @@ class EquipmentResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'work_center_id' => $this->work_center_id,
-            'work_center' => new WorkCenterResource($this->whenLoaded('workCenter')),
+            'work_center' => WorkCenterResource::make($this->whenLoaded('workCenter')),
             'asset_id' => $this->asset_id,
             'branch_id' => $this->branch_id,
             'location' => $this->location,

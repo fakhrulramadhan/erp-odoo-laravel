@@ -17,7 +17,7 @@ class TicketCategoryResource extends JsonResource
             'description' => $this->description,
             'is_active' => $this->is_active,
             'company_id' => $this->company_id,
-            'company' => new CompanyResource($this->whenLoaded('company')),
+            'company' => CompanyResource::make($this->whenLoaded('company')),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];

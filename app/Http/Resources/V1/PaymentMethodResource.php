@@ -15,10 +15,10 @@ class PaymentMethodResource extends JsonResource
             'name'           => $this->name,
             'type'           => $this->type,
             'bank_account_id' => $this->bank_account_id,
-            'bank_account'   => new BankAccountResource($this->whenLoaded('bankAccount')),
+            'bank_account'   => BankAccountResource::make($this->whenLoaded('bankAccount')),
             'description'    => $this->description,
             'is_active'      => $this->is_active,
-            'creator'        => new UserResource($this->whenLoaded('creator')),
+            'creator'        => UserResource::make($this->whenLoaded('creator')),
             'created_at'     => $this->created_at?->toISOString(),
             'updated_at'     => $this->updated_at?->toISOString(),
         ];

@@ -17,7 +17,7 @@ class ShiftResource extends JsonResource
             'end_time' => $this->end_time,
             'grace_period_minutes' => $this->grace_period_minutes,
             'company_id' => $this->company_id,
-            'company' => new CompanyResource($this->whenLoaded('company')),
+            'company' => CompanyResource::make($this->whenLoaded('company')),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];

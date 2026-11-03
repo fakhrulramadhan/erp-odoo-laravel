@@ -14,7 +14,7 @@ class EmployeeContractResource extends JsonResource
             'id' => $this->id,
             'contract_number' => $this->contract_number,
             'employee_id' => $this->employee_id,
-            'employee' => new EmployeeResource($this->whenLoaded('employee')),
+            'employee' => EmployeeResource::make($this->whenLoaded('employee')),
             'contract_type' => $this->contract_type,
             'start_date' => $this->start_date?->toDateString(),
             'end_date' => $this->end_date?->toDateString(),
@@ -23,7 +23,7 @@ class EmployeeContractResource extends JsonResource
             'terms' => $this->terms,
             'notes' => $this->notes,
             'company_id' => $this->company_id,
-            'company' => new CompanyResource($this->whenLoaded('company')),
+            'company' => CompanyResource::make($this->whenLoaded('company')),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];

@@ -17,7 +17,7 @@ class UserResource extends JsonResource
             'phone' => $this->phone,
             'status' => $this->status,
             'last_login_at' => $this->last_login_at?->toISOString(),
-            'company' => new CompanyResource($this->whenLoaded('company')),
+            'company' => CompanyResource::make($this->whenLoaded('company')),
             'branch' => $this->whenLoaded('branch', fn() => [
                 'id' => $this->branch->id,
                 'name' => $this->branch->name,
