@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Input, Select, Textarea, Button } from '../../components/ui';
+import { Input, Select, Textarea, Button, SearchSelect } from '../../components/ui';
+import { getFkLoader } from './fkOptions';
 
-export default function MasterDataForm({ fields, initialData, errors, loading, onSubmit, onCancel }) {
+export default function MasterDataForm({ fields, module, initialData, errors, loading, onSubmit, onCancel }) {
     const [formData, setFormData] = useState({});
 
     useEffect(() => {
@@ -34,6 +35,37 @@ export default function MasterDataForm({ fields, initialData, errors, loading, o
             {fields.map((field) => {
                 const value = formData[field.name] ?? '';
                 const error = errors?.[field.name]?.[0];
+
+                // Searchable foreign-key combobox (async autocomplete).
+                if (field.type === 'select' && field.searchable) {
+                    const loader = field.loadOptions || getFkLoader(field.name, module);
+                    // Resolve the current label from the preloaded relation on initialData
+                    // (e.g. initialData.category?.name) so edit mode shows the name.
+                    const relationKey = field.name.replace(/_id$/, '');
+                    const relation = initialData?.[relationKey];
+                    const resolveLabel = (v) => {
+                        const rel = relation ?? initialData?.[relationKey];
+                        if (rel && String(rel.id) === String(v)) {
+                            return rel.code ? `${rel.name} (${rel.code})` : (rel.name || rel.email);
+                        }
+                        return undefined;
+                    };
+                    return (
+                        <SearchSelect
+                            key={field.name}
+                            label={field.label}
+                            value={value}
+                            onChange={(v) => handleChange(field.name, v)}
+                            options={field.options}
+                            loadOptions={loader}
+                            resolveLabel={resolveLabel}
+                            placeholder={field.placeholder}
+                            error={error}
+                            required={field.required}
+                            disabled={field.disabled}
+                        />
+                    );
+                }
 
                 if (field.type === 'select') {
                     return (

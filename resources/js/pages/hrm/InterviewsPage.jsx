@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Search, Edit2, Trash2, MessageSquare } from 'lucide-react';
-import { interviewsApi } from '../../api/endpoints';
+import { interviewsApi, applicantsApi } from '../../api/endpoints';
 import { useCrudApi } from '../../hooks/useCrudApi';
 import { StatusBadge, formatDate } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
@@ -20,8 +20,18 @@ export default function InterviewsPage() {
     const [form, setForm] = useState({});
     const [formErrors, setFormErrors] = useState({});
     const [feedbackForm, setFeedbackForm] = useState({});
+    const [applicants, setApplicants] = useState([]);
+
+    const loadApplicants = async () => {
+        try {
+            const res = await applicantsApi.list({ per_page: 999 });
+            const p = res.data?.data;
+            setApplicants(Array.isArray(p) ? p : (p?.data || []));
+        } catch {}
+    };
 
     const openForm = (item = null) => {
+        loadApplicants();
         if (item) {
             setForm({
                 applicant_id: item.applicant_id || '', interviewer_name: item.interviewer_name || '',
@@ -104,8 +114,11 @@ export default function InterviewsPage() {
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
                     <div className="grid grid-cols-2 gap-4">
-                        <Field label="Applicant ID *" error={formErrors.applicant_id}>
-                            <input value={form.applicant_id} onChange={e => set('applicant_id', e.target.value)} className="input-field" required />
+                        <Field label="Applicant *" error={formErrors.applicant_id}>
+                            <select value={form.applicant_id} onChange={e => set('applicant_id', e.target.value)} className="input-field" required>
+                                <option value="">Select Applicant</option>
+                                {applicants.map(a => <option key={a.id} value={a.id}>{a.name || a.id}</option>)}
+                            </select>
                         </Field>
                         <Field label="Interviewer *" error={formErrors.interviewer_name}>
                             <input value={form.interviewer_name} onChange={e => set('interviewer_name', e.target.value)} className="input-field" required />

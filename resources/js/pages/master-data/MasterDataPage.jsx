@@ -205,6 +205,7 @@ export default function MasterDataPage({ config }) {
             >
                 <MasterDataForm
                     fields={formFields}
+                    module={moduleName}
                     initialData={editItem}
                     errors={formErrors}
                     loading={saving}

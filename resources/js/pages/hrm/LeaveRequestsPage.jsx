@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Search, CheckCircle, XCircle } from 'lucide-react';
-import { leaveRequestsApi } from '../../api/endpoints';
+import { leaveRequestsApi, employeesApi, leaveTypesApi } from '../../api/endpoints';
 import { useCrudApi } from '../../hooks/useCrudApi';
 import { StatusBadge, formatDate } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
@@ -19,8 +19,23 @@ export default function LeaveRequestsPage() {
     const [selectedId, setSelectedId] = useState(null);
     const [form, setForm] = useState({});
     const [formErrors, setFormErrors] = useState({});
+    const [employees, setEmployees] = useState([]);
+    const [leaveTypes, setLeaveTypes] = useState([]);
+
+    const loadLookups = async () => {
+        try {
+            const [emp, lt] = await Promise.all([
+                employeesApi.list({ per_page: 999 }),
+                leaveTypesApi.list({ per_page: 999 }),
+            ]);
+            const ex = (res) => { const p = res.data?.data; return Array.isArray(p) ? p : (p?.data || []); };
+            setEmployees(ex(emp));
+            setLeaveTypes(ex(lt));
+        } catch {}
+    };
 
     const openForm = (req = null) => {
+        loadLookups();
         if (req) {
             setForm({
                 employee_id: req.employee_id || '', leave_type_id: req.leave_type_id || '',
@@ -74,11 +89,17 @@ export default function LeaveRequestsPage() {
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
                     <div className="grid grid-cols-2 gap-4">
-                        <Field label="Employee ID *" error={formErrors.employee_id}>
-                            <input value={f.employee_id} onChange={e => set('employee_id', e.target.value)} className="input-field" required />
+                        <Field label="Employee *" error={formErrors.employee_id}>
+                            <select value={f.employee_id} onChange={e => set('employee_id', e.target.value)} className="input-field" required>
+                                <option value="">Select Employee</option>
+                                {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.id}</option>)}
+                            </select>
                         </Field>
-                        <Field label="Leave Type ID *" error={formErrors.leave_type_id}>
-                            <input value={f.leave_type_id} onChange={e => set('leave_type_id', e.target.value)} className="input-field" required />
+                        <Field label="Leave Type *" error={formErrors.leave_type_id}>
+                            <select value={f.leave_type_id} onChange={e => set('leave_type_id', e.target.value)} className="input-field" required>
+                                <option value="">Select Leave Type</option>
+                                {leaveTypes.map(lt => <option key={lt.id} value={lt.id}>{lt.name || lt.code || lt.id}</option>)}
+                            </select>
                         </Field>
                         <Field label="Start Date *" error={formErrors.start_date}>
                             <input type="date" value={f.start_date} onChange={e => set('start_date', e.target.value)} className="input-field" required />

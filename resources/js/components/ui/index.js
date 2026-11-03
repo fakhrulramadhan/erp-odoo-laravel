@@ -1,6 +1,7 @@
 // Re-export all UI components
 export { Button } from './Button';
 export { Input, Select, Textarea } from './Form';
+export { SearchSelect } from './SearchSelect';
 export { Alert } from './Alert';
 export { Spinner, PageLoader } from './Loader';
 export { Card, StatCard } from './Card';

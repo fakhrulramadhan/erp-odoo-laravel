@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Search, Eye, Edit2, Trash2, Send, CheckCircle, XCircle, DollarSign } from 'lucide-react';
-import { expenseClaimsApi } from '../../api/endpoints';
+import { expenseClaimsApi, employeesApi } from '../../api/endpoints';
 import { useCrudApi } from '../../hooks/useCrudApi';
 import { StatusBadge, formatDate, formatCurrency } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
@@ -21,6 +21,15 @@ export default function ExpenseClaimsPage() {
     const [detailLoading, setDetailLoading] = useState(false);
     const [form, setForm] = useState({});
     const [formErrors, setFormErrors] = useState({});
+    const [employees, setEmployees] = useState([]);
+
+    const loadEmployees = async () => {
+        try {
+            const res = await employeesApi.list({ per_page: 999 });
+            const p = res.data?.data;
+            setEmployees(Array.isArray(p) ? p : (p?.data || []));
+        } catch {}
+    };
 
     const loadDetail = async (id) => {
         setDetailLoading(true);
@@ -33,6 +42,7 @@ export default function ExpenseClaimsPage() {
     };
 
     const openForm = (claim = null) => {
+        loadEmployees();
         if (claim) {
             setForm({
                 employee_id: claim.employee_id || '', expense_date: claim.expense_date || '',
@@ -79,8 +89,11 @@ export default function ExpenseClaimsPage() {
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
                     <div className="grid grid-cols-2 gap-4">
-                        <Field label="Employee ID *" error={formErrors.employee_id}>
-                            <input value={f.employee_id} onChange={e => set('employee_id', e.target.value)} className="input-field" required />
+                        <Field label="Employee *" error={formErrors.employee_id}>
+                            <select value={f.employee_id} onChange={e => set('employee_id', e.target.value)} className="input-field" required>
+                                <option value="">Select Employee</option>
+                                {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.id}</option>)}
+                            </select>
                         </Field>
                         <Field label="Expense Date *" error={formErrors.expense_date}>
                             <input type="date" value={f.expense_date} onChange={e => set('expense_date', e.target.value)} className="input-field" required />

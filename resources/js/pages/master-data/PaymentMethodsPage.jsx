@@ -47,7 +47,7 @@ const config = {
             { value: 'credit_card', label: 'Credit Card' },
             { value: 'ewallet', label: 'E-Wallet' },
         ]},
-        { name: 'bank_account_id', label: 'Bank Account ID', type: 'number', placeholder: 'Bank Account ID (optional)' },
+        { name: 'bank_account_id', label: 'Bank Account', type: 'select', searchable: true, placeholder: 'Search bank account...' },
         { name: 'description', label: 'Description', type: 'textarea' },
     ],
 };

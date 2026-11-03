@@ -4,15 +4,25 @@ import api from '../../api/client';
 
 export default function FinancePaymentsPage() {
     const [payments, setPayments] = useState([]);
+    const [invoices, setInvoices] = useState([]);
     const [form, setForm] = useState({ payment_type: 'customer', payment_date: '', payment_method: 'cash', amount: '', notes: '', allocations: [{ invoice_id: '', amount: '' }] });
 
     useEffect(() => {
         reload();
+        loadInvoices();
     }, []);
 
     const reload = async () => {
         const res = await api.get('/v1/finance/payments');
         setPayments(res.data.data?.data || []);
+    };
+
+    const loadInvoices = async () => {
+        try {
+            const res = await api.get('/v1/finance/invoices');
+            const list = res.data.data?.data || res.data.data || [];
+            setInvoices(list);
+        } catch {}
     };
 
     const handleAllocationChange = (index, field, value) => {
@@ -55,7 +65,12 @@ export default function FinancePaymentsPage() {
                     <Textarea label="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
                     {form.allocations.map((allocation, index) => (
                         <div key={index} className="grid gap-4 rounded-lg border p-4 md:grid-cols-2">
-                            <Input label="Invoice ID" type="number" value={allocation.invoice_id} onChange={(e) => handleAllocationChange(index, 'invoice_id', e.target.value)} required />
+                            <Select label="Invoice" value={allocation.invoice_id} onChange={(e) => handleAllocationChange(index, 'invoice_id', e.target.value)} required>
+                                <option value="">Select Invoice</option>
+                                {invoices.map((inv) => (
+                                    <option key={inv.id} value={inv.id}>{inv.invoice_number}</option>
+                                ))}
+                            </Select>
                             <Input label="Amount" type="number" step="0.01" value={allocation.amount} onChange={(e) => handleAllocationChange(index, 'amount', e.target.value)} required />
                         </div>
                     ))}

@@ -28,7 +28,7 @@ const config = {
         ]},
     ],
     formFields: [
-        { name: 'warehouse_id', label: 'Warehouse ID', type: 'number', required: true, placeholder: 'Warehouse ID' },
+        { name: 'warehouse_id', label: 'Warehouse', type: 'select', searchable: true, required: true, placeholder: 'Search warehouse...' },
         { name: 'code', label: 'Code', required: true, placeholder: 'e.g. LOC-001' },
         { name: 'name', label: 'Name', required: true },
         { name: 'type', label: 'Type', type: 'select', required: true, options: [
@@ -39,7 +39,7 @@ const config = {
             { value: 'production', label: 'Production' },
             { value: 'scrap', label: 'Scrap' },
         ]},
-        { name: 'parent_id', label: 'Parent Location ID', type: 'number', placeholder: 'Parent ID (optional)' },
+        { name: 'parent_id', label: 'Parent Location', type: 'select', searchable: true, placeholder: 'Search parent location...' },
         { name: 'description', label: 'Description', type: 'textarea' },
     ],
 };

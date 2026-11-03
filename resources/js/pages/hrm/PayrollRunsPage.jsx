@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Search, Eye, Edit2, Trash2, CheckCircle, XCircle, Play, Flag, Lock } from 'lucide-react';
-import { payrollRunsApi, payslipsApi } from '../../api/endpoints';
+import { payrollRunsApi, payslipsApi, payrollPeriodsApi } from '../../api/endpoints';
 import { useCrudApi } from '../../hooks/useCrudApi';
 import { StatusBadge, formatDate, formatCurrency } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
@@ -21,6 +21,15 @@ export default function PayrollRunsPage() {
     const [detailLoading, setDetailLoading] = useState(false);
     const [form, setForm] = useState({});
     const [formErrors, setFormErrors] = useState({});
+    const [periods, setPeriods] = useState([]);
+
+    const loadPeriods = async () => {
+        try {
+            const res = await payrollPeriodsApi.list({ per_page: 999 });
+            const p = res.data?.data;
+            setPeriods(Array.isArray(p) ? p : (p?.data || []));
+        } catch {}
+    };
 
     const loadDetail = async (id) => {
         setDetailLoading(true);
@@ -33,6 +42,7 @@ export default function PayrollRunsPage() {
     };
 
     const openForm = (run = null) => {
+        loadPeriods();
         if (run) {
             setForm({
                 payroll_period_id: run.payroll_period_id || '', company_id: run.company_id || '',
@@ -80,8 +90,11 @@ export default function PayrollRunsPage() {
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
                     <div className="grid grid-cols-2 gap-4">
-                        <Field label="Payroll Period ID *" error={formErrors.payroll_period_id}>
-                            <input value={f.payroll_period_id} onChange={e => set('payroll_period_id', e.target.value)} className="input-field" required />
+                        <Field label="Payroll Period *" error={formErrors.payroll_period_id}>
+                            <select value={f.payroll_period_id} onChange={e => set('payroll_period_id', e.target.value)} className="input-field" required>
+                                <option value="">Select Period</option>
+                                {periods.map(p => <option key={p.id} value={p.id}>{p.name || p.id}</option>)}
+                            </select>
                         </Field>
                         <Field label="Pay Date *" error={formErrors.pay_date}>
                             <input type="date" value={f.pay_date} onChange={e => set('pay_date', e.target.value)} className="input-field" required />

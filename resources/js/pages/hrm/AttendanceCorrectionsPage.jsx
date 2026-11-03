@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Search, Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
-import { attendanceCorrectionsApi } from '../../api/endpoints';
+import { attendanceCorrectionsApi, attendanceApi } from '../../api/endpoints';
 import { useCrudApi } from '../../hooks/useCrudApi';
 import { StatusBadge, formatDate } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
@@ -19,8 +19,18 @@ export default function AttendanceCorrectionsPage() {
     const [selectedId, setSelectedId] = useState(null);
     const [form, setForm] = useState({});
     const [formErrors, setFormErrors] = useState({});
+    const [attendances, setAttendances] = useState([]);
+
+    const loadAttendances = async () => {
+        try {
+            const res = await attendanceApi.list({ per_page: 999 });
+            const p = res.data?.data;
+            setAttendances(Array.isArray(p) ? p : (p?.data || []));
+        } catch {}
+    };
 
     const openForm = (item = null) => {
+        loadAttendances();
         if (item) {
             setForm({
                 attendance_id: item.attendance_id || '', correction_date: item.correction_date || '',
@@ -69,8 +79,11 @@ export default function AttendanceCorrectionsPage() {
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
                     <div className="grid grid-cols-2 gap-4">
-                        <Field label="Attendance ID *" error={formErrors.attendance_id}>
-                            <input value={form.attendance_id} onChange={e => set('attendance_id', e.target.value)} className="input-field" required />
+                        <Field label="Attendance *" error={formErrors.attendance_id}>
+                            <select value={form.attendance_id} onChange={e => set('attendance_id', e.target.value)} className="input-field" required>
+                                <option value="">Select Attendance</option>
+                                {attendances.map(a => <option key={a.id} value={a.id}>{a.attendance_date}{a.employee?.full_name ? ` - ${a.employee.full_name}` : ''}</option>)}
+                            </select>
                         </Field>
                         <Field label="Correction Date *" error={formErrors.correction_date}>
                             <input type="date" value={form.correction_date} onChange={e => set('correction_date', e.target.value)} className="input-field" required />

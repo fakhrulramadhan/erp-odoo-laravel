@@ -36,7 +36,7 @@ const config = {
         { name: 'bank_name', label: 'Bank Name', placeholder: 'e.g. Bank Central Asia' },
         { name: 'account_number', label: 'Account Number' },
         { name: 'account_name', label: 'Account Holder Name' },
-        { name: 'currency_id', label: 'Currency ID', type: 'number', placeholder: 'Currency ID (optional)' },
+        { name: 'currency_id', label: 'Currency', type: 'select', searchable: true, placeholder: 'Search currency...' },
         { name: 'opening_balance', label: 'Opening Balance', type: 'number', placeholder: '0.00' },
         { name: 'description', label: 'Description', type: 'textarea' },
     ],

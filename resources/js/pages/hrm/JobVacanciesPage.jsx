@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Search, Eye, Edit2, Trash2, Send, XCircle } from 'lucide-react';
-import { jobVacanciesApi } from '../../api/endpoints';
+import { jobVacanciesApi, settingsApi } from '../../api/endpoints';
 import { useCrudApi } from '../../hooks/useCrudApi';
 import { StatusBadge, formatDate, formatCurrency } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
@@ -19,8 +19,27 @@ export default function JobVacanciesPage() {
     const [selectedId, setSelectedId] = useState(null);
     const [form, setForm] = useState({});
     const [formErrors, setFormErrors] = useState({});
+    const [departments, setDepartments] = useState([]);
+    const [positions, setPositions] = useState([]);
+
+    const extractItems = (res) => {
+        const p = res.data?.data;
+        return Array.isArray(p) ? p : (p?.data || []);
+    };
+
+    const loadLookups = async () => {
+        try {
+            const [d, p] = await Promise.all([
+                settingsApi.departments({ per_page: 999 }),
+                settingsApi.positions({ per_page: 999 }),
+            ]);
+            setDepartments(extractItems(d));
+            setPositions(extractItems(p));
+        } catch {}
+    };
 
     const openForm = (vac = null) => {
+        loadLookups();
         if (vac) {
             setForm({
                 title: vac.title || '', department_id: vac.department_id || '',
@@ -78,11 +97,17 @@ export default function JobVacanciesPage() {
                         <input value={f.title} onChange={e => set('title', e.target.value)} className="input-field" required />
                     </Field>
                     <div className="grid grid-cols-2 gap-4">
-                        <Field label="Department ID" error={formErrors.department_id}>
-                            <input value={f.department_id} onChange={e => set('department_id', e.target.value)} className="input-field" />
+                        <Field label="Department" error={formErrors.department_id}>
+                            <select value={f.department_id} onChange={e => set('department_id', e.target.value)} className="input-field">
+                                <option value="">Select Department</option>
+                                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            </select>
                         </Field>
-                        <Field label="Position ID" error={formErrors.position_id}>
-                            <input value={f.position_id} onChange={e => set('position_id', e.target.value)} className="input-field" />
+                        <Field label="Position" error={formErrors.position_id}>
+                            <select value={f.position_id} onChange={e => set('position_id', e.target.value)} className="input-field">
+                                <option value="">Select Position</option>
+                                {positions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
                         </Field>
                         <Field label="Employment Type" error={formErrors.employment_type}>
                             <select value={f.employment_type} onChange={e => set('employment_type', e.target.value)} className="input-field">

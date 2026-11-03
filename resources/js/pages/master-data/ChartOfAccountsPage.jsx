@@ -60,7 +60,7 @@ const config = {
             { value: 'debit', label: 'Debit' },
             { value: 'credit', label: 'Credit' },
         ]},
-        { name: 'parent_id', label: 'Parent Account ID', type: 'number', placeholder: 'Parent ID (optional)' },
+        { name: 'parent_id', label: 'Parent Account', type: 'select', searchable: true, placeholder: 'Search parent account...' },
         { name: 'is_group', label: 'Group Account', type: 'checkbox' },
         { name: 'description', label: 'Description', type: 'textarea' },
     ],

@@ -16,7 +16,7 @@ const config = {
         { name: 'code', label: 'Code', required: true, placeholder: 'e.g. CAT-001' },
         { name: 'name', label: 'Name', required: true },
         { name: 'description', label: 'Description', type: 'textarea' },
-        { name: 'parent_id', label: 'Parent Category', type: 'number', placeholder: 'Parent ID (optional)' },
+        { name: 'parent_id', label: 'Parent Category', type: 'select', searchable: true, placeholder: 'Search parent category...' },
     ],
 };
 

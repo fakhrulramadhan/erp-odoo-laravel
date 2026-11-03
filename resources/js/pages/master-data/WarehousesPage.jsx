@@ -26,7 +26,7 @@ const config = {
         { name: 'address', label: 'Address', type: 'textarea' },
         { name: 'city', label: 'City' },
         { name: 'phone', label: 'Phone' },
-        { name: 'pic_id', label: 'PIC (User ID)', type: 'number', placeholder: 'User ID (optional)' },
+        { name: 'pic_id', label: 'PIC (User)', type: 'select', searchable: true, placeholder: 'Search user...' },
         { name: 'is_main', label: 'Main Warehouse', type: 'checkbox' },
     ],
 };

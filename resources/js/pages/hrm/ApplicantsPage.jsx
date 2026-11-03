@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Search, Edit2, Trash2, ChevronRight } from 'lucide-react';
-import { applicantsApi } from '../../api/endpoints';
+import { applicantsApi, jobVacanciesApi } from '../../api/endpoints';
 import { useCrudApi } from '../../hooks/useCrudApi';
 import { StatusBadge, formatDate } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
@@ -40,8 +40,18 @@ export default function ApplicantsPage() {
     const [selectedId, setSelectedId] = useState(null);
     const [form, setForm] = useState({});
     const [formErrors, setFormErrors] = useState({});
+    const [vacancies, setVacancies] = useState([]);
+
+    const loadVacancies = async () => {
+        try {
+            const res = await jobVacanciesApi.list({ per_page: 999 });
+            const p = res.data?.data;
+            setVacancies(Array.isArray(p) ? p : (p?.data || []));
+        } catch {}
+    };
 
     const openForm = (app = null) => {
+        loadVacancies();
         if (app) {
             setForm({
                 job_vacancy_id: app.job_vacancy_id || '', name: app.name || '',
@@ -93,8 +103,11 @@ export default function ApplicantsPage() {
                         <Field label="Phone" error={formErrors.phone}>
                             <input value={f.phone} onChange={e => set('phone', e.target.value)} className="input-field" />
                         </Field>
-                        <Field label="Job Vacancy ID" error={formErrors.job_vacancy_id}>
-                            <input value={f.job_vacancy_id} onChange={e => set('job_vacancy_id', e.target.value)} className="input-field" />
+                        <Field label="Job Vacancy" error={formErrors.job_vacancy_id}>
+                            <select value={f.job_vacancy_id} onChange={e => set('job_vacancy_id', e.target.value)} className="input-field">
+                                <option value="">Select Vacancy</option>
+                                {vacancies.map(v => <option key={v.id} value={v.id}>{v.title}</option>)}
+                            </select>
                         </Field>
                         <Field label="Date of Birth" error={formErrors.date_of_birth}>
                             <input type="date" value={f.date_of_birth} onChange={e => set('date_of_birth', e.target.value)} className="input-field" />
