@@ -350,14 +350,12 @@ class MasterDataController extends Controller
 
         $validated = $request->validate($rules);
         $validated['updated_by'] = $request->user()->id;
-
         $model->update($validated);
-
+        $model = $model->fresh();
         if (!empty($config['relations'])) {
             $model->load($config['relations']);
         }
-
-        return $this->success(new $config['resource']($model->fresh()));
+        return $this->success(new $config['resource']($model));
     }
 
     public function destroy(Request $request, string $module, int $id): JsonResponse

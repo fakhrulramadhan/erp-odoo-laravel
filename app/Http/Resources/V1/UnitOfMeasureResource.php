@@ -16,7 +16,7 @@ class UnitOfMeasureResource extends JsonResource
             'type'        => $this->type,
             'description' => $this->description,
             'is_active'   => $this->is_active,
-            'creator'     => new UserResource($this->whenLoaded('creator')),
+            'creator'     => UserResource::make($this->whenLoaded('creator')),
             'created_at'  => $this->created_at?->toISOString(),
             'updated_at'  => $this->updated_at?->toISOString(),
         ];

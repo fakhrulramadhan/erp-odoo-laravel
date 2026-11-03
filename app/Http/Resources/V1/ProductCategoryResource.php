@@ -15,11 +15,11 @@ class ProductCategoryResource extends JsonResource
             'name'        => $this->name,
             'description' => $this->description,
             'parent_id'   => $this->parent_id,
-            'parent'      => new self($this->whenLoaded('parent')),
+            'parent'      => self::make($this->whenLoaded('parent')),
             'level'       => $this->level,
             'path'        => $this->path,
             'is_active'   => $this->is_active,
-            'creator'     => new UserResource($this->whenLoaded('creator')),
+            'creator'     => UserResource::make($this->whenLoaded('creator')),
             'created_at'  => $this->created_at?->toISOString(),
             'updated_at'  => $this->updated_at?->toISOString(),
         ];
