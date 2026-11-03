@@ -50,7 +50,8 @@ class EcommerceProductService
     {
         return DB::transaction(function () use ($id, $data) {
             $data['updated_by'] = auth()->id();
-            return $this->repository->update($id, $data);
+            $this->repository->update($id, $data);
+            return $this->repository->findWithDetails($id);
         });
     }
 
