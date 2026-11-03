@@ -46,14 +46,23 @@ export function SearchSelect({
         setItems(options);
     }, [options, loadOptions]);
 
-    // Async load with debounce.
+    // Keep the latest loader in a ref so a changed function identity (e.g. an
+    // inline loader recreated on each parent render) does not cancel in-flight
+    // requests and leave the list empty.
+    const loadOptionsRef = useRef(loadOptions);
     useEffect(() => {
-        if (!loadOptions) return;
+        loadOptionsRef.current = loadOptions;
+    }, [loadOptions]);
+
+    // Async load with debounce (re-runs only when the query changes).
+    useEffect(() => {
+        const loader = loadOptionsRef.current;
+        if (!loader) return;
         let cancelled = false;
         setLoading(true);
         const timer = setTimeout(async () => {
             try {
-                const loaded = await loadOptions(query);
+                const loaded = await loader(query);
                 if (!cancelled) setItems(loaded || []);
             } catch {
                 if (!cancelled) setItems([]);
@@ -65,7 +74,7 @@ export function SearchSelect({
             cancelled = true;
             clearTimeout(timer);
         };
-    }, [query, loadOptions]);
+    }, [query, !!loadOptions]);
 
     // Close on outside click.
     useEffect(() => {

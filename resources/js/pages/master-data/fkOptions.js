@@ -6,13 +6,19 @@ import {
 } from '../../api/endpoints';
 
 /**
- * Resolve a list endpoint response into a normalized array of { value, label }.
- * Accepts common shapes: { data: [...] }, { data: { data: [...] } }, or [...].
+ * Resolve a list endpoint response into a normalized array of items.
+ *
+ * The loaders below are called with the raw axios response, whose body is
+ * typically shaped `{ success, data: { data: [...], meta } }` (paginated) or
+ * `{ success, data: [...] }` (simple list). We therefore drill through nested
+ * `data` wrappers until we find an array. Also tolerates a plain array.
  */
 function normalizeList(payload) {
-    const data = payload?.data ?? payload;
-    const list = Array.isArray(data) ? data : data?.data;
-    return Array.isArray(list) ? list : [];
+    let data = payload;
+    for (let i = 0; i < 6 && data != null && !Array.isArray(data); i++) {
+        data = data.data;
+    }
+    return Array.isArray(data) ? data : [];
 }
 
 function buildOptions(list, labelFn) {
