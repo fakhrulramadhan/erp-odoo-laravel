@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\V1\ProductCategoryResource;
+use App\Http\Resources\V1\UnitOfMeasureResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -11,18 +13,26 @@ class ProductResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'name' => $this->name,
             'code' => $this->code,
             'barcode' => $this->barcode,
-            'product_category_id' => $this->product_category_id,
-            'productCategory' => $this->whenLoaded('productCategory', fn() => ['id' => $this->productCategory->id, 'name' => $this->productCategory->name]),
-            'unit_of_measure_id' => $this->unit_of_measure_id,
-            'unitOfMeasure' => $this->whenLoaded('unitOfMeasure', fn() => ['id' => $this->unitOfMeasure->id, 'name' => $this->unitOfMeasure->name, 'symbol' => $this->unitOfMeasure->symbol]),
+            'name' => $this->name,
             'description' => $this->description,
-            'cost' => (float) ($this->cost ?? 0),
-            'price' => (float) ($this->price ?? 0),
+            'category_id' => $this->category_id,
+            'category' => new ProductCategoryResource($this->whenLoaded('category')),
+            'uom_id' => $this->uom_id,
+            'uom' => new UnitOfMeasureResource($this->whenLoaded('uom')),
+            'tax_id' => $this->tax_id,
+            'tax' => $this->whenLoaded('tax'),
+            'type' => $this->type,
+            'purchase_price' => (float) ($this->purchase_price ?? 0),
+            'sales_price' => (float) ($this->sales_price ?? 0),
+            'minimum_stock' => (float) ($this->minimum_stock ?? 0),
+            'image' => $this->image,
+            'weight' => $this->weight,
+            'volume' => $this->volume,
             'is_active' => (bool) $this->is_active,
             'created_at' => $this->created_at?->toIso8601String(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }
