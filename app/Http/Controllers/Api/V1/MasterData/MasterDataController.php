@@ -337,13 +337,8 @@ class MasterDataController extends Controller
             if (is_string($rule)) {
                 $rule = str_replace('required', 'sometimes|required', $rule);
                 $table = $model->getTable();
-                $rule  = preg_replace(
-                    "/unique:{$field}|unique:{$table},{$field}/",
-                    "unique:{$table},{$field},{$id}",
-                    $rule
-                );
-                // Generic unique replacement: unique:table,column → unique:table,column,id
-                $rule = preg_replace('/unique:([^,]+),([^,|]+)/', "unique:\\1,\\2,{$id}", $rule);
+                // Ignore current record for unique checks: unique:table,column -> unique:table,column,{id}
+                $rule = preg_replace('/unique:([^,|]+),([^,|]+)/', "unique:\\1,\\2,{$id}", $rule);
             }
             $rules[$field] = $rule;
         }
