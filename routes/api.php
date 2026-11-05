@@ -173,6 +173,7 @@ Route::prefix('v1')->group(function () {
             Route::post('purchase-orders/{id}/send', [PurchaseOrderController::class, 'sendToVendor']);
             Route::post('purchase-orders/{id}/create-picking', [PurchaseOrderController::class, 'createPicking']);
             Route::post('purchase-orders/{id}/receive', [PurchaseOrderController::class, 'receive']);
+            Route::post('purchase-orders/{id}/generate-vendor-invoice', [PurchaseOrderController::class, 'generateVendorInvoice']);
 
             // Supplier Quotations
             Route::get('quotations', [SupplierQuotationController::class, 'index']);

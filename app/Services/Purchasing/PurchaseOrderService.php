@@ -2,17 +2,22 @@
 
 namespace App\Services\Purchasing;
 
+use App\Enums\FinanceStatus;
 use App\Enums\PurchaseOrderStatus;
 use App\Enums\PickingStatus;
 use App\Enums\PickingType;
 use App\Enums\StockMoveStatus;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
 use App\Models\StockLocation;
 use App\Models\StockMove;
 use App\Models\StockPicking;
 use App\Repositories\PurchaseOrderRepository;
+use App\Services\Finance\FinanceService;
 use App\Services\Inventory\StockPickingService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -244,6 +249,69 @@ class PurchaseOrderService
             }
 
             return $this->repository->findWithLines($id);
+        });
+    }
+
+    public function generateVendorInvoice(int $id): Invoice
+    {
+        return DB::transaction(function () use ($id) {
+            $po = $this->repository->findWithLines($id);
+
+            if (!in_array($po->status, [PurchaseOrderStatus::Received, PurchaseOrderStatus::PartialReceived])) {
+                throw new \DomainException('Cannot generate vendor invoice for a purchase order that is not received or partially received.');
+            }
+
+            $existing = Invoice::where('source_type', 'purchase_order')
+                ->where('source_id', $po->id)
+                ->where('invoice_type', 'vendor')
+                ->first();
+            if ($existing) {
+                throw new \DomainException('A vendor invoice already exists for this purchase order.');
+            }
+
+            $invoice = Invoice::create([
+                'company_id' => $po->company_id,
+                'invoice_number' => app(\App\Services\Finance\FinanceService::class)->generateNumber('INV'),
+                'invoice_type' => 'vendor',
+                'vendor_id' => $po->vendor_id,
+                'currency_id' => $po->currency_id,
+                'invoice_date' => now(),
+                'due_date' => null,
+                'status' => FinanceStatus::Draft,
+                'source_type' => 'purchase_order',
+                'source_id' => $po->id,
+                'notes' => 'Vendor invoice for ' . $po->order_number,
+                'created_by' => Auth::id(),
+            ]);
+
+            $subtotal = 0;
+            foreach ($po->lines as $line) {
+                $qty = (float) $line->received_qty;
+                $unitPrice = (float) $line->price;
+                $lineTotal = round($qty * $unitPrice, 2);
+                $subtotal += $lineTotal;
+
+                $invoice->items()->create([
+                    'product_id' => $line->product_id,
+                    'description' => $line->description ?? 'PO Line #' . $line->line_number,
+                    'quantity' => $qty,
+                    'unit_price' => $unitPrice,
+                    'discount_rate' => 0,
+                    'discount_amount' => 0,
+                    'tax_amount' => 0,
+                    'line_total' => $lineTotal,
+                ]);
+            }
+
+            $invoice->update([
+                'subtotal' => round($subtotal, 2),
+                'discount_amount' => 0,
+                'tax_amount' => 0,
+                'total_amount' => round($subtotal, 2),
+                'balance_amount' => round($subtotal, 2),
+            ]);
+
+            return $invoice->fresh()->load('items');
         });
     }
 }

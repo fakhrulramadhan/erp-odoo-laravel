@@ -138,4 +138,11 @@ class PurchaseOrderController extends Controller
 
         return $this->success(new PurchaseOrderResource($po), 'Purchase order received.');
     }
+
+    public function generateVendorInvoice(int $id): JsonResponse
+    {
+        $invoice = $this->service->generateVendorInvoice($id);
+
+        return $this->created($invoice, 'Vendor invoice generated successfully.');
+    }
 }

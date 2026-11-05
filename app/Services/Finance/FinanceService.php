@@ -250,7 +250,7 @@ class FinanceService
         });
     }
 
-    protected function generateNumber(string $prefix): string
+    public function generateNumber(string $prefix): string
     {
         return $prefix . '-' . now()->format('Ymd') . '-' . strtoupper(Str::random(4));
     }
