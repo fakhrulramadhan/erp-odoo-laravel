@@ -1,8 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Plus, Search, Eye, Edit2, Trash2, Send, CheckCircle, XCircle,
-    ShoppingCart, ChevronDown, ChevronUp, ArrowLeft, MoreVertical,
-    Package, Truck, FileText
+    ArrowLeft, Package, Truck, FileText
 } from 'lucide-react';
 import { purchaseOrdersApi } from '../../api/endpoints';
 import { masterDataApi, settingsApi, stockPickingsApi } from '../../api/endpoints';
@@ -62,7 +61,6 @@ export default function PurchaseOrdersPage() {
     const [detail, setDetail] = useState(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
-    const [menuOpenId, setMenuOpenId] = useState(null);
 
     // Lookups for forms
     const [vendors, setVendors] = useState([]);

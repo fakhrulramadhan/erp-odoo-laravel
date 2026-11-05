@@ -8,15 +8,11 @@ use App\Enums\PickingStatus;
 use App\Enums\PickingType;
 use App\Enums\StockMoveStatus;
 use App\Models\Invoice;
-use App\Models\InvoiceItem;
 use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderLine;
 use App\Models\StockLocation;
-use App\Models\StockMove;
 use App\Models\StockPicking;
 use App\Repositories\PurchaseOrderRepository;
 use App\Services\Finance\FinanceService;
-use App\Services\Inventory\StockPickingService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -310,7 +306,7 @@ class PurchaseOrderService
         } else {
             $invoice = Invoice::create([
                 'company_id' => $po->company_id,
-                'invoice_number' => app(\App\Services\Finance\FinanceService::class)->generateNumber('INV'),
+                'invoice_number' => app(FinanceService::class)->generateNumber('INV'),
                 'invoice_type' => 'vendor',
                 'vendor_id' => $po->vendor_id,
                 'currency_id' => $po->currency_id,

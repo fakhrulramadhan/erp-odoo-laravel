@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Eye, Edit2, Trash2, CheckCircle, XCircle, ArrowLeft, Truck, Package, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
-import { stockPickingsApi, masterDataApi, settingsApi } from '../../api/endpoints';
+import { stockPickingsApi, masterDataApi } from '../../api/endpoints';
 import { useCrudApi } from '../../hooks/useCrudApi';
 import { StatusBadge, formatDate } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
@@ -44,20 +44,17 @@ export default function StockPickingsPage() {
     const [detail, setDetail] = useState(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
-    const [warehouses, setWarehouses] = useState([]);
     const [locations, setLocations] = useState([]);
     const [products, setProducts] = useState([]);
 
     useEffect(() => {
         async function loadLookups() {
             try {
-                const [w, l, p] = await Promise.all([
-                    masterDataApi.list('warehouses', { per_page: 999 }),
+                const [l, p] = await Promise.all([
                     masterDataApi.list('stock-locations', { per_page: 999 }),
                     masterDataApi.list('products', { per_page: 999 }),
                 ]);
                 const extract = (res) => { const d = res.data?.data; return Array.isArray(d) ? d : (d?.data || []); };
-                setWarehouses(extract(w));
                 setLocations(extract(l));
                 setProducts(extract(p));
             } catch {}
