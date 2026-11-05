@@ -162,9 +162,11 @@ class PurchaseOrderService
                 throw new \DomainException('Cannot create picking for a purchase order that is not ordered or partially received.');
             }
 
-            $existing = $po->pickings()->where('status', '!=', PickingStatus::Cancelled->value)->first();
-            if ($existing) {
-                throw new \DomainException('A stock picking already exists for this purchase order.');
+            $active = $po->pickings()
+                ->whereNotIn('status', [PickingStatus::Cancelled->value, PickingStatus::Done->value])
+                ->first();
+            if ($active) {
+                throw new \DomainException('An open stock picking already exists for this purchase order.');
             }
 
             $warehouseId = $po->warehouse_id;
@@ -210,8 +212,6 @@ class PurchaseOrderService
                 ]);
             }
 
-            $po->transitionTo(PurchaseOrderStatus::Ordered);
-
             return $this->repository->findWithLines($id);
         });
     }
@@ -225,27 +225,28 @@ class PurchaseOrderService
                 throw new \DomainException('Cannot receive a purchase order that is not ordered or partially received.');
             }
 
-            $picking = $po->pickings()->where('status', PickingStatus::Done->value)->first();
-            if (!$picking) {
+            $pickings = $po->pickings()->where('status', PickingStatus::Done->value)->with('moves')->get();
+            if ($pickings->isEmpty()) {
                 throw new \DomainException('No validated stock picking found for this purchase order.');
             }
 
-            foreach ($po->lines as $line) {
-                $received = 0;
+            $receivedByProduct = [];
+            foreach ($pickings as $picking) {
                 foreach ($picking->moves as $move) {
-                    if ($move->product_id === $line->product_id) {
-                        $received += (float) $move->done_qty;
-                    }
+                    $receivedByProduct[$move->product_id] = ($receivedByProduct[$move->product_id] ?? 0) + (float) $move->done_qty;
                 }
+            }
+
+            foreach ($po->lines as $line) {
+                $received = min((float) $line->quantity, $receivedByProduct[$line->product_id] ?? 0);
                 $line->update(['received_qty' => $received]);
             }
 
             $po->recalculate();
 
-            if ($po->isFullyReceived()) {
-                $po->transitionTo(PurchaseOrderStatus::Received);
-            } else {
-                $po->transitionTo(PurchaseOrderStatus::PartialReceived);
+            $target = $po->isFullyReceived() ? PurchaseOrderStatus::Received : PurchaseOrderStatus::PartialReceived;
+            if ($po->status !== $target) {
+                $po->transitionTo($target);
             }
 
             return $this->repository->findWithLines($id);

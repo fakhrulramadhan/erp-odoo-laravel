@@ -38,9 +38,9 @@ enum PickingStatus: string
     public function allowedTransitions(): array
     {
         return match ($this) {
-            self::Draft => [self::Waiting, self::Cancelled],
+            self::Draft => [self::Waiting, self::Confirmed, self::Cancelled],
             self::Waiting => [self::Confirmed, self::Cancelled],
-            self::Confirmed => [self::Assigned, self::Cancelled],
+            self::Confirmed => [self::Assigned, self::Done, self::Cancelled],
             self::Assigned => [self::Done],
             self::Done => [],
             self::Cancelled => [],

@@ -2,10 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import {
     Plus, Search, Eye, Edit2, Trash2, Send, CheckCircle, XCircle,
     ShoppingCart, ChevronDown, ChevronUp, ArrowLeft, MoreVertical,
-    Package, Truck, FileText, RefreshCw
+    Package, Truck, FileText
 } from 'lucide-react';
 import { purchaseOrdersApi } from '../../api/endpoints';
-import { masterDataApi, settingsApi } from '../../api/endpoints';
+import { masterDataApi, settingsApi, stockPickingsApi } from '../../api/endpoints';
 import { useCrudApi } from '../../hooks/useCrudApi';
 import { StatusBadge, formatCurrency, formatDate } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
@@ -24,6 +24,29 @@ const PO_STATUS_OPTIONS = [
     { value: 'closed', label: 'Closed' },
     { value: 'cancelled', label: 'Cancelled' },
 ];
+
+// ─── Business flow action labels ────────────────────
+const ACTION_LABELS = {
+    submit: 'submit for approval',
+    approve: 'approve',
+    cancel: 'cancel',
+    send: 'send to vendor',
+    createPicking: 'create goods receipt',
+    validatePicking: 'validate goods receipt',
+    receive: 'post received quantities',
+    generateVendorInvoice: 'generate vendor invoice',
+};
+
+const ACTION_HINTS = {
+    submit: 'The purchase order will be sent for approval.',
+    approve: 'The purchase order will be approved and can be sent to the vendor.',
+    send: 'The order will be marked as sent and its status becomes Ordered.',
+    createPicking: 'An incoming goods receipt will be created. Validate it afterwards so the goods are booked into the warehouse.',
+    validatePicking: 'Stock will be added to the warehouse. After this you can post the received quantities.',
+    receive: 'Received quantities will be posted to the order, and goods become payable to the vendor.',
+    generateVendorInvoice: 'A vendor invoice will be created in Finance from the received quantities.',
+    cancel: 'This purchase order will be cancelled.',
+};
 
 export default function PurchaseOrdersPage() {
     const {
@@ -99,10 +122,12 @@ export default function PurchaseOrdersPage() {
             createPicking: purchaseOrdersApi.createPicking,
             receive: purchaseOrdersApi.receive,
             generateVendorInvoice: purchaseOrdersApi.generateVendorInvoice,
+            confirmPicking: stockPickingsApi.confirm,
+            validatePicking: stockPickingsApi.validate,
         };
         const result = await performAction(actionMap[action], id);
-        if (result && view === 'detail' && id === selectedId) {
-            loadDetail(id);
+        if (result && view === 'detail') {
+            loadDetail(selectedId);
         }
         setConfirmAction(null);
     };
@@ -291,9 +316,9 @@ export default function PurchaseOrdersPage() {
 
             {/* Confirm Dialog */}
             {confirmAction && (
-                <Modal onClose={() => setConfirmAction(null)} title={`Confirm ${confirmAction.action}`}>
+                <Modal onClose={() => setConfirmAction(null)} title={`Confirm ${ACTION_LABELS[confirmAction.action] || confirmAction.action}`}>
                     <p className="text-gray-600 mb-4">
-                        Are you sure you want to <strong>{confirmAction.action}</strong> this purchase order?
+                        {ACTION_HINTS[confirmAction.action] || `Are you sure you want to ${confirmAction.action} this purchase order?`}
                     </p>
                     <div className="flex justify-end gap-3">
                         <Button onClick={() => setConfirmAction(null)} className="bg-gray-100 text-gray-700 hover:bg-gray-200">Cancel</Button>
@@ -308,18 +333,64 @@ export default function PurchaseOrdersPage() {
 }
 
 // ─── DETAIL VIEW ─────────────────────────────────────
+const FLOW_STEPS = [
+    { key: 'draft', label: 'Draft' },
+    { key: 'approved', label: 'Approved' },
+    { key: 'ordered', label: 'Sent to Vendor' },
+    { key: 'received', label: 'Goods Received' },
+    { key: 'invoiced', label: 'Vendor Invoice' },
+];
+
+function ProcessStepper({ order }) {
+    const status = order.status;
+    const pickings = order.pickings || [];
+    const hasDonePicking = pickings.some(p => p.status === 'done');
+    const reached = {
+        draft: true,
+        approved: ['approved', 'ordered', 'partial_received', 'received', 'closed'].includes(status),
+        ordered: ['ordered', 'partial_received', 'received', 'closed'].includes(status),
+        received: hasDonePicking || ['received', 'closed'].includes(status),
+        invoiced: Boolean(order.invoice),
+    };
+
+    return (
+        <div className="bg-white rounded-xl border border-gray-200 px-6 py-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Business Process</h3>
+            <div className="flex flex-wrap items-center gap-2">
+                {FLOW_STEPS.map((step, index) => (
+                    <div key={step.key} className="flex items-center gap-2">
+                        <span className={`rounded-full px-3 py-1 text-xs font-medium ${reached[step.key] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {index + 1}. {step.label}
+                        </span>
+                        {index < FLOW_STEPS.length - 1 && <span className="text-gray-300">→</span>}
+                    </div>
+                ))}
+            </div>
+            <p className="mt-3 text-xs text-gray-500">
+                {status === 'cancelled'
+                    ? 'This purchase order is cancelled. No goods will be received and no payment will be made.'
+                    : 'Goods received into the warehouse become payable to the vendor, then Finance posts and pays the vendor invoice.'}
+            </p>
+        </div>
+    );
+}
+
 function PurchaseOrderDetail({ order, onBack, onEdit, onAction, onDelete, loading, reload }) {
     if (loading) return <div className="flex justify-center py-20"><Spinner /></div>;
 
     const status = order.status;
+    const pickings = order.pickings || [];
+    const hasActivePicking = pickings.some(p => ['draft', 'waiting', 'confirmed', 'assigned'].includes(p.status));
+    const hasDonePicking = pickings.some(p => p.status === 'done');
+
     const canEdit = status === 'draft';
     const canSubmit = status === 'draft';
     const canApprove = status === 'waiting_approval';
     const canCancel = ['draft', 'waiting_approval', 'approved'].includes(status);
     const canSend = status === 'approved';
-    const canCreatePicking = ['ordered', 'partial_received'].includes(status);
-    const canReceive = ['ordered', 'partial_received'].includes(status);
-    const canGenerateInvoice = ['received', 'partial_received'].includes(status);
+    const canCreatePicking = ['ordered', 'partial_received'].includes(status) && !hasActivePicking;
+    const canReceive = ['ordered', 'partial_received'].includes(status) && hasDonePicking;
+    const canGenerateInvoice = ['received', 'partial_received'].includes(status) && !order.invoice;
 
     return (
         <div className="space-y-6">
@@ -382,6 +453,9 @@ function PurchaseOrderDetail({ order, onBack, onEdit, onAction, onDelete, loadin
                     )}
                 </div>
             </div>
+
+            {/* Business Process Stepper */}
+            <ProcessStepper order={order} />
 
             {/* Info Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -456,6 +530,61 @@ function PurchaseOrderDetail({ order, onBack, onEdit, onAction, onDelete, loadin
                 </div>
             </div>
 
+            {/* Pickings */}
+            {pickings.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="font-semibold text-gray-900">Goods Receipts (Pickings)</h3>
+                        {hasActivePicking && (
+                            <span className="text-xs text-orange-600">
+                                Validate the picking first so stock lands in the warehouse.
+                            </span>
+                        )}
+                        {!hasActivePicking && hasDonePicking && ['ordered', 'partial_received'].includes(status) && (
+                            <span className="text-xs text-green-600">
+                                Goods are in stock — post received quantities to pay the vendor.
+                            </span>
+                        )}
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-3 text-left font-medium text-gray-600">Picking Number</th>
+                                    <th className="px-4 py-3 text-left font-medium text-gray-600">Scheduled</th>
+                                    <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
+                                    <th className="px-4 py-3 text-center font-medium text-gray-600">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {pickings.map((p) => (
+                                    <tr key={p.id} className="hover:bg-gray-50">
+                                        <td className="px-4 py-3 font-medium text-gray-900">{p.picking_number}</td>
+                                        <td className="px-4 py-3 text-gray-600">{formatDate(p.scheduled_date)}</td>
+                                        <td className="px-4 py-3"><StatusBadge status={p.status} label={p.status_label} /></td>
+                                        <td className="px-4 py-3 text-center">
+                                            {p.status === 'draft' && (
+                                                <button onClick={() => onAction('confirmPicking', p.id)} className="text-xs font-medium text-blue-600 hover:text-blue-800">
+                                                    Confirm
+                                                </button>
+                                            )}
+                                            {['confirmed', 'assigned'].includes(p.status) && (
+                                                <button onClick={() => onAction('validatePicking', p.id)} className="text-xs font-medium text-green-600 hover:text-green-800">
+                                                    Validate
+                                                </button>
+                                            )}
+                                            {['done', 'cancelled'].includes(p.status) && (
+                                                <span className="text-xs text-gray-400">—</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
             {/* Receiving Summary */}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h3 className="font-semibold text-gray-900 mb-4">Receiving Summary</h3>
@@ -511,8 +640,7 @@ function PurchaseOrderDetail({ order, onBack, onEdit, onAction, onDelete, loadin
     );
 }
 
-function InfoCard({ label, value }) {
-    return (
+function InfoCard({ label, value }) {    return (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">{label}</p>
             <p className="text-sm font-medium text-gray-900">{value}</p>
