@@ -90,14 +90,49 @@ class PurchaseOrderService
             $po = $this->repository->create($data);
 
             foreach ($lines as $index => $line) {
-                $line['line_number'] = $index + 1;
-                $po->lines()->create($line);
+                $fields = $this->normalizeLine($line);
+                $fields['line_number'] = $index + 1;
+                $po->lines()->create($fields);
             }
 
             $po->recalculate();
 
             return $this->repository->findWithLines($po->id);
         });
+    }
+
+    /**
+     * Map API field names to the column names used by purchase_order_lines.
+     */
+    protected function normalizeLine(array $line): array
+    {
+        $fields = [
+            'product_id' => $line['product_id'],
+            'uom_id' => $line['uom_id'] ?? null,
+            'tax_id' => $line['tax_id'] ?? null,
+            'description' => $line['description'] ?? null,
+            'quantity' => (float) ($line['quantity'] ?? 0),
+            'price' => (float) ($line['unit_price'] ?? $line['price'] ?? 0),
+            'discount_percent' => (float) ($line['discount_rate'] ?? $line['discount_percent'] ?? 0),
+            'delivery_date' => $line['delivery_date'] ?? null,
+        ];
+
+        $taxRate = $line['tax_rate'] ?? null;
+        if ($taxRate === null && !empty($fields['tax_id'])) {
+            $taxRate = \App\Models\TaxSetting::whereKey($fields['tax_id'])->value('rate');
+        }
+        $fields['tax_rate'] = (float) ($taxRate ?? 0);
+
+        $subtotal = $fields['quantity'] * $fields['price'];
+        $discountAmount = round($subtotal * $fields['discount_percent'] / 100, 2);
+        $taxAmount = round(($subtotal - $discountAmount) * $fields['tax_rate'] / 100, 2);
+
+        $fields['subtotal'] = round($subtotal, 2);
+        $fields['discount_amount'] = $discountAmount;
+        $fields['tax_amount'] = $taxAmount;
+        $fields['total'] = round($subtotal - $discountAmount + $taxAmount, 2);
+
+        return $fields;
     }
 
     public function update(int $id, array $data): PurchaseOrder
@@ -118,8 +153,9 @@ class PurchaseOrderService
             if ($lines !== null) {
                 $po->lines()->delete();
                 foreach ($lines as $index => $line) {
-                    $line['line_number'] = $index + 1;
-                    $po->lines()->create($line);
+                    $fields = $this->normalizeLine($line);
+                    $fields['line_number'] = $index + 1;
+                    $po->lines()->create($fields);
                 }
             }
 

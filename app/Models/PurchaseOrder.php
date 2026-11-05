@@ -52,7 +52,12 @@ class PurchaseOrder extends Model
     public function updater(): BelongsTo { return $this->belongsTo(User::class, 'updated_by'); }
     public function lines(): HasMany { return $this->hasMany(PurchaseOrderLine::class)->orderBy('line_number'); }
     public function pickings(): HasMany { return $this->hasMany(StockPicking::class); }
-    public function invoice(): HasOne { return $this->hasOne(Invoice::class)->where('source_type', 'purchase_order')->where('invoice_type', 'vendor'); }
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class, 'source_id')
+            ->where('source_type', 'purchase_order')
+            ->where('invoice_type', 'vendor');
+    }
 
     // ── Scopes ─────────────────────────────────────
     public function scopeByStatus($query, string $status) { return $query->where('status', $status); }

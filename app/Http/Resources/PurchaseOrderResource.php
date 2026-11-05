@@ -45,7 +45,7 @@ class PurchaseOrderResource extends JsonResource
             'creator' => UserResource::make($this->whenLoaded('creator')),
             'lines' => PurchaseOrderLineResource::collection($this->whenLoaded('lines')),
             'pickings' => StockPickingResource::collection($this->whenLoaded('pickings')),
-            'invoice' => InvoiceResource::make($this->whenLoaded('invoice')),
+            'invoice' => $this->whenLoaded('invoice', fn () => $this->invoice ? new InvoiceResource($this->invoice) : null),
             'total_ordered_qty' => (float) $this->getTotalOrderedQty(),
             'total_received_qty' => (float) $this->getTotalReceivedQty(),
             'is_fully_received' => $this->isFullyReceived(),
