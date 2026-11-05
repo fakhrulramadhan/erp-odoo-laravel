@@ -96,6 +96,9 @@ export const purchaseOrdersApi = {
     approve: (id) => api.post(`/v1/purchasing/purchase-orders/${id}/approve`),
     cancel: (id) => api.post(`/v1/purchasing/purchase-orders/${id}/cancel`),
     sendToVendor: (id) => api.post(`/v1/purchasing/purchase-orders/${id}/send`),
+    createPicking: (id) => api.post(`/v1/purchasing/purchase-orders/${id}/create-picking`),
+    receive: (id) => api.post(`/v1/purchasing/purchase-orders/${id}/receive`),
+    generateVendorInvoice: (id) => api.post(`/v1/purchasing/purchase-orders/${id}/generate-vendor-invoice`),
 };
 
 export const supplierQuotationsApi = {

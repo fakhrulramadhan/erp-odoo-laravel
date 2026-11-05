@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Enums\PurchaseOrderStatus;
+use App\Models\Invoice;
 use App\Traits\HasAudit;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PurchaseOrder extends Model
@@ -50,6 +52,7 @@ class PurchaseOrder extends Model
     public function updater(): BelongsTo { return $this->belongsTo(User::class, 'updated_by'); }
     public function lines(): HasMany { return $this->hasMany(PurchaseOrderLine::class)->orderBy('line_number'); }
     public function pickings(): HasMany { return $this->hasMany(StockPicking::class); }
+    public function invoice(): HasOne { return $this->hasOne(Invoice::class)->where('source_type', 'purchase_order')->where('invoice_type', 'vendor'); }
 
     // ── Scopes ─────────────────────────────────────
     public function scopeByStatus($query, string $status) { return $query->where('status', $status); }

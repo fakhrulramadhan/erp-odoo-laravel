@@ -24,7 +24,7 @@ class PurchaseOrderRepository extends BaseRepository
         return PurchaseOrder::with([
             'vendor', 'company', 'currency', 'warehouse',
             'lines.product', 'lines.uom', 'lines.tax',
-            'approver', 'creator',
+            'approver', 'creator', 'pickings', 'invoice',
         ])->findOrFail($id);
     }
 

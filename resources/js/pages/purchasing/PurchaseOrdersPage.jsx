@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
     Plus, Search, Eye, Edit2, Trash2, Send, CheckCircle, XCircle,
-    ShoppingCart, ChevronDown, ChevronUp, ArrowLeft, MoreVertical
+    ShoppingCart, ChevronDown, ChevronUp, ArrowLeft, MoreVertical,
+    Package, Truck, FileText, RefreshCw
 } from 'lucide-react';
 import { purchaseOrdersApi } from '../../api/endpoints';
 import { masterDataApi, settingsApi } from '../../api/endpoints';
@@ -95,6 +96,9 @@ export default function PurchaseOrdersPage() {
             approve: purchaseOrdersApi.approve,
             cancel: purchaseOrdersApi.cancel,
             send: purchaseOrdersApi.sendToVendor,
+            createPicking: purchaseOrdersApi.createPicking,
+            receive: purchaseOrdersApi.receive,
+            generateVendorInvoice: purchaseOrdersApi.generateVendorInvoice,
         };
         const result = await performAction(actionMap[action], id);
         if (result && view === 'detail' && id === selectedId) {
@@ -313,6 +317,9 @@ function PurchaseOrderDetail({ order, onBack, onEdit, onAction, onDelete, loadin
     const canApprove = status === 'waiting_approval';
     const canCancel = ['draft', 'waiting_approval', 'approved'].includes(status);
     const canSend = status === 'approved';
+    const canCreatePicking = ['ordered', 'partial_received'].includes(status);
+    const canReceive = ['ordered', 'partial_received'].includes(status);
+    const canGenerateInvoice = ['received', 'partial_received'].includes(status);
 
     return (
         <div className="space-y-6">
@@ -346,6 +353,21 @@ function PurchaseOrderDetail({ order, onBack, onEdit, onAction, onDelete, loadin
                     {canSend && (
                         <Button onClick={() => onAction('send', order.id)} className="flex items-center gap-2 bg-purple-50 text-purple-700 hover:bg-purple-100">
                             <Send className="h-4 w-4" /> Send to Vendor
+                        </Button>
+                    )}
+                    {canCreatePicking && (
+                        <Button onClick={() => onAction('createPicking', order.id)} className="flex items-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100">
+                            <Package className="h-4 w-4" /> Create Picking
+                        </Button>
+                    )}
+                    {canReceive && (
+                        <Button onClick={() => onAction('receive', order.id)} className="flex items-center gap-2 bg-green-50 text-green-700 hover:bg-green-100">
+                            <Truck className="h-4 w-4" /> Receive Goods
+                        </Button>
+                    )}
+                    {canGenerateInvoice && (
+                        <Button onClick={() => onAction('generateVendorInvoice', order.id)} className="flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                            <FileText className="h-4 w-4" /> Generate Vendor Invoice
                         </Button>
                     )}
                     {canCancel && (
@@ -433,6 +455,50 @@ function PurchaseOrderDetail({ order, onBack, onEdit, onAction, onDelete, loadin
                     </table>
                 </div>
             </div>
+
+            {/* Receiving Summary */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Receiving Summary</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-xs text-gray-500 uppercase">Total Ordered Qty</p>
+                        <p className="font-medium text-gray-900">{order.total_ordered_qty ?? 0}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-xs text-gray-500 uppercase">Total Received Qty</p>
+                        <p className="font-medium text-gray-900">{order.total_received_qty ?? 0}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-xs text-gray-500 uppercase">Fully Received</p>
+                        <p className="font-medium text-gray-900">{order.is_fully_received ? 'Yes' : 'No'}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-xs text-gray-500 uppercase">Pickings</p>
+                        <p className="font-medium text-gray-900">{order.pickings?.length ?? 0}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Vendor Invoice */}
+            {order.invoice && (
+                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <h3 className="font-semibold text-gray-900 mb-4">Vendor Invoice</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase">Invoice Number</p>
+                            <p className="font-medium text-gray-900">{order.invoice.invoice_number}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase">Status</p>
+                            <p className="font-medium text-gray-900">{order.invoice.status}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase">Total Amount</p>
+                            <p className="font-medium text-gray-900">{formatCurrency(order.invoice.total_amount, order.currency?.code)}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Notes */}
             {order.notes && (
