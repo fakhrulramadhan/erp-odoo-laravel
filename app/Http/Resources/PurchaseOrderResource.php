@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\StockPickingResource;
 
 class PurchaseOrderResource extends JsonResource
 {
@@ -42,6 +43,10 @@ class PurchaseOrderResource extends JsonResource
             'created_by' => $this->created_by,
             'creator' => UserResource::make($this->whenLoaded('creator')),
             'lines' => PurchaseOrderLineResource::collection($this->whenLoaded('lines')),
+            'pickings' => StockPickingResource::collection($this->whenLoaded('pickings')),
+            'total_ordered_qty' => (float) $this->getTotalOrderedQty(),
+            'total_received_qty' => (float) $this->getTotalReceivedQty(),
+            'is_fully_received' => $this->isFullyReceived(),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

@@ -124,4 +124,18 @@ class PurchaseOrderController extends Controller
 
         return $this->success(new PurchaseOrderResource($po), 'Purchase order sent to vendor.');
     }
+
+    public function createPicking(int $id): JsonResponse
+    {
+        $po = $this->service->createPicking($id);
+
+        return $this->success(new PurchaseOrderResource($po), 'Stock picking created for purchase order.');
+    }
+
+    public function receive(int $id): JsonResponse
+    {
+        $po = $this->service->receive($id);
+
+        return $this->success(new PurchaseOrderResource($po), 'Purchase order received.');
+    }
 }

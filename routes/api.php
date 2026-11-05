@@ -171,6 +171,8 @@ Route::prefix('v1')->group(function () {
             Route::post('purchase-orders/{id}/approve', [PurchaseOrderController::class, 'approve']);
             Route::post('purchase-orders/{id}/cancel', [PurchaseOrderController::class, 'cancel']);
             Route::post('purchase-orders/{id}/send', [PurchaseOrderController::class, 'sendToVendor']);
+            Route::post('purchase-orders/{id}/create-picking', [PurchaseOrderController::class, 'createPicking']);
+            Route::post('purchase-orders/{id}/receive', [PurchaseOrderController::class, 'receive']);
 
             // Supplier Quotations
             Route::get('quotations', [SupplierQuotationController::class, 'index']);
