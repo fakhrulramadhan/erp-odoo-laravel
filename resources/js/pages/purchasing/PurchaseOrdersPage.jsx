@@ -124,7 +124,11 @@ export default function PurchaseOrdersPage() {
             validatePicking: stockPickingsApi.validate,
         };
         const result = await performAction(actionMap[action], id);
-        if (result && view === 'detail') {
+        if (!result) {
+            // Keep the dialog open so the error message stays visible.
+            return;
+        }
+        if (view === 'detail') {
             loadDetail(selectedId);
         }
         setConfirmAction(null);
@@ -173,15 +177,25 @@ export default function PurchaseOrdersPage() {
 
     if (view === 'detail' && detail) {
         return (
-            <PurchaseOrderDetail
-                order={detail}
-                onBack={() => { setView('list'); setDetail(null); }}
-                onEdit={() => setView('edit')}
-                onAction={handleAction}
-                onDelete={handleDelete}
-                loading={detailLoading}
-                reload={() => loadDetail(detail.id)}
-            />
+            <>
+                <PurchaseOrderDetail
+                    order={detail}
+                    onBack={() => { setView('list'); setDetail(null); }}
+                    onEdit={() => setView('edit')}
+                    onAction={handleAction}
+                    onDelete={handleDelete}
+                    loading={detailLoading}
+                    reload={() => loadDetail(detail.id)}
+                    error={error}
+                />
+                <ConfirmActionModal
+                    confirmAction={confirmAction}
+                    saving={saving}
+                    onClose={() => setConfirmAction(null)}
+                    onConfirm={executeAction}
+                    error={error}
+                />
+            </>
         );
     }
 
@@ -313,20 +327,35 @@ export default function PurchaseOrdersPage() {
             )}
 
             {/* Confirm Dialog */}
-            {confirmAction && (
-                <Modal onClose={() => setConfirmAction(null)} title={`Confirm ${ACTION_LABELS[confirmAction.action] || confirmAction.action}`}>
-                    <p className="text-gray-600 mb-4">
-                        {ACTION_HINTS[confirmAction.action] || `Are you sure you want to ${confirmAction.action} this purchase order?`}
-                    </p>
-                    <div className="flex justify-end gap-3">
-                        <Button onClick={() => setConfirmAction(null)} className="bg-gray-100 text-gray-700 hover:bg-gray-200">Cancel</Button>
-                        <Button onClick={executeAction} disabled={saving}>
-                            {saving ? 'Processing...' : 'Confirm'}
-                        </Button>
-                    </div>
-                </Modal>
-            )}
+            <ConfirmActionModal
+                confirmAction={confirmAction}
+                saving={saving}
+                onClose={() => setConfirmAction(null)}
+                onConfirm={executeAction}
+                error={error}
+            />
         </div>
+    );
+}
+
+function ConfirmActionModal({ confirmAction, saving, onClose, onConfirm, error }) {
+    if (!confirmAction) return null;
+
+    return (
+        <Modal onClose={onClose} title={`Confirm ${ACTION_LABELS[confirmAction.action] || confirmAction.action}`}>
+            <p className="text-gray-600 mb-4">
+                {ACTION_HINTS[confirmAction.action] || `Are you sure you want to ${confirmAction.action} this purchase order?`}
+            </p>
+            {typeof error === 'string' && error && (
+                <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+            )}
+            <div className="flex justify-end gap-3">
+                <Button onClick={onClose} className="bg-gray-100 text-gray-700 hover:bg-gray-200">Cancel</Button>
+                <Button onClick={onConfirm} disabled={saving}>
+                    {saving ? 'Processing...' : 'Confirm'}
+                </Button>
+            </div>
+        </Modal>
     );
 }
 
@@ -373,7 +402,7 @@ function ProcessStepper({ order }) {
     );
 }
 
-function PurchaseOrderDetail({ order, onBack, onEdit, onAction, onDelete, loading, reload }) {
+function PurchaseOrderDetail({ order, onBack, onEdit, onAction, onDelete, loading, reload, error }) {
     if (loading) return <div className="flex justify-center py-20"><Spinner /></div>;
 
     const status = order.status;
@@ -404,6 +433,9 @@ function PurchaseOrderDetail({ order, onBack, onEdit, onAction, onDelete, loadin
                         <StatusBadge status={order.status} label={order.status_label} />
                     </div>
                 </div>
+                {typeof error === 'string' && error && (
+                    <div className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
+                )}
                 <div className="flex flex-wrap gap-2">
                     {canEdit && (
                         <Button onClick={onEdit} className="flex items-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100">
