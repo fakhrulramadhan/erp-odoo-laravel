@@ -94,9 +94,9 @@ export default function StockPickingsPage() {
 
     // ─── Form ──────────────────────────────────────
     const [form, setForm] = useState({
-        picking_type: 'incoming', source_warehouse_id: '', dest_warehouse_id: '',
+        picking_type: 'incoming', source_location_id: '', destination_location_id: '',
         scheduled_date: new Date().toISOString().split('T')[0], notes: '',
-        stock_moves: [{ product_id: '', quantity: 1, source_location_id: '', dest_location_id: '' }],
+        moves: [{ product_id: '', quantity: 1, source_location_id: '', destination_location_id: '' }],
     });
     const [loadingForm, setLoadingForm] = useState(false);
 
@@ -107,11 +107,12 @@ export default function StockPickingsPage() {
             const p = res.data.data;
             setForm({
                 picking_type: p.picking_type || 'incoming',
-                source_warehouse_id: p.source_warehouse_id || '', dest_warehouse_id: p.dest_warehouse_id || '',
+                source_location_id: p.source_location_id || '',
+                destination_location_id: p.destination_location_id || '',
                 scheduled_date: p.scheduled_date || '', notes: p.notes || '',
-                stock_moves: (p.stock_moves || []).map(m => ({
-                    product_id: m.product_id, quantity: m.quantity || m.reserved_qty,
-                    source_location_id: m.source_location_id || '', dest_location_id: m.dest_location_id || '',
+                moves: (p.moves || []).map(m => ({
+                    product_id: m.product_id, quantity: m.quantity,
+                    source_location_id: m.source_location_id || '', destination_location_id: m.destination_location_id || '',
                 })),
             });
             setSelectedId(id);
@@ -120,14 +121,14 @@ export default function StockPickingsPage() {
     };
 
     const resetForm = () => {
-        setForm({ picking_type: 'incoming', source_warehouse_id: '', dest_warehouse_id: '', scheduled_date: new Date().toISOString().split('T')[0], notes: '', stock_moves: [{ product_id: '', quantity: 1, source_location_id: '', dest_location_id: '' }] });
+        setForm({ picking_type: 'incoming', source_location_id: '', destination_location_id: '', scheduled_date: new Date().toISOString().split('T')[0], notes: '', moves: [{ product_id: '', quantity: 1, source_location_id: '', destination_location_id: '' }] });
         setSelectedId(null);
     };
 
     const updateField = (f, v) => setForm(p => ({ ...p, [f]: v }));
-    const updateMove = (i, f, v) => { setForm(p => { const m = [...p.stock_moves]; m[i] = { ...m[i], [f]: f === 'quantity' ? (v === '' ? '' : Number(v)) : v }; return { ...p, stock_moves: m }; }); };
-    const addMove = () => setForm(p => ({ ...p, stock_moves: [...p.stock_moves, { product_id: '', quantity: 1, source_location_id: '', dest_location_id: '' }] }));
-    const removeMove = (i) => { if (form.stock_moves.length <= 1) return; setForm(p => ({ ...p, stock_moves: p.stock_moves.filter((_, idx) => idx !== i) })); };
+    const updateMove = (i, f, v) => { setForm(p => { const m = [...p.moves]; m[i] = { ...m[i], [f]: f === 'quantity' ? (v === '' ? '' : Number(v)) : v }; return { ...p, moves: m }; }); };
+    const addMove = () => setForm(p => ({ ...p, moves: [...p.moves, { product_id: '', quantity: 1, source_location_id: '', destination_location_id: '' }] }));
+    const removeMove = (i) => { if (form.moves.length <= 1) return; setForm(p => ({ ...p, moves: p.moves.filter((_, idx) => idx !== i) })); };
 
     if (view === 'form') {
         const isEdit = !!selectedId;
@@ -147,15 +148,15 @@ export default function StockPickingsPage() {
                     // Transform form data to match backend field names
                     const payload = {
                         picking_type: form.picking_type,
-                        source_location_id: form.source_warehouse_id || undefined,
-                        destination_location_id: form.dest_warehouse_id || undefined,
+                        source_location_id: form.source_location_id || undefined,
+                        destination_location_id: form.destination_location_id || undefined,
                         scheduled_date: form.scheduled_date,
                         notes: form.notes,
-                        moves: (form.stock_moves || []).map(m => ({
+                        moves: (form.moves || []).map(m => ({
                             product_id: m.product_id,
                             quantity: Number(m.quantity) || 1,
                             source_location_id: m.source_location_id || undefined,
-                            destination_location_id: m.dest_location_id || undefined,
+                            destination_location_id: m.destination_location_id || undefined,
                         })),
                     };
                     let ok;
@@ -174,17 +175,17 @@ export default function StockPickingsPage() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Source Warehouse</label>
-                                <select value={form.source_warehouse_id} onChange={e => updateField('source_warehouse_id', e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Source Location</label>
+                                <select value={form.source_location_id} onChange={e => updateField('source_location_id', e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
                                     <option value="">Select</option>
-                                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                    {locations.map(l => <option key={l.id} value={l.id}>{l.name}{l.warehouse?.name ? ` — ${l.warehouse.name}` : ''}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Destination Warehouse</label>
-                                <select value={form.dest_warehouse_id} onChange={e => updateField('dest_warehouse_id', e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Destination Location</label>
+                                <select value={form.destination_location_id} onChange={e => updateField('destination_location_id', e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
                                     <option value="">Select</option>
-                                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                    {locations.map(l => <option key={l.id} value={l.id}>{l.name}{l.warehouse?.name ? ` — ${l.warehouse.name}` : ''}</option>)}
                                 </select>
                             </div>
                             <div>
@@ -213,7 +214,7 @@ export default function StockPickingsPage() {
                                     <th className="px-3 py-3 w-12"></th>
                                 </tr></thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {form.stock_moves.map((move, i) => (
+                                    {form.moves.map((move, i) => (
                                         <tr key={i}>
                                             <td className="px-3 py-2 text-gray-500">{i + 1}</td>
                                             <td className="px-3 py-2">
@@ -230,12 +231,12 @@ export default function StockPickingsPage() {
                                                 </select>
                                             </td>
                                             <td className="px-3 py-2">
-                                                <select value={move.dest_location_id} onChange={e => updateMove(i, 'dest_location_id', e.target.value)} className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm">
+                                                <select value={move.destination_location_id} onChange={e => updateMove(i, 'destination_location_id', e.target.value)} className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm">
                                                     <option value="">-</option>
                                                     {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                                 </select>
                                             </td>
-                                            <td className="px-3 py-2"><button type="button" onClick={() => removeMove(i)} className="p-1 rounded text-red-400 hover:text-red-600" disabled={form.stock_moves.length <= 1}><Trash2 className="h-4 w-4" /></button></td>
+                                            <td className="px-3 py-2"><button type="button" onClick={() => removeMove(i)} className="p-1 rounded text-red-400 hover:text-red-600" disabled={form.moves.length <= 1}><Trash2 className="h-4 w-4" /></button></td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -279,11 +280,26 @@ export default function StockPickingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <InfoCard label="Type" value={<span className="capitalize">{detail.picking_type}</span>} />
                     <InfoCard label="Scheduled Date" value={formatDate(detail.scheduled_date)} />
-                    <InfoCard label="Source" value={detail.source_warehouse?.name || '-'} />
-                    <InfoCard label="Destination" value={detail.dest_warehouse?.name || '-'} />
+                    <InfoCard label="Origin" value={detail.origin || '-'} />
+                    <InfoCard label="Source" value={detail.source_location?.name || '-'} />
+                    <InfoCard label="Destination" value={detail.destination_location?.name || '-'} />
+                    <InfoCard label="Vendor" value={detail.vendor?.name || '-'} />
+                    <InfoCard
+                        label="Purchase Order"
+                        value={detail.purchase_order
+                            ? `${detail.purchase_order.order_number} (${detail.purchase_order.status_label || detail.purchase_order.status})`
+                            : '-'}
+                    />
                     <InfoCard label="Created By" value={detail.creator?.name || '-'} />
                     <InfoCard label="Notes" value={detail.notes || '-'} />
                 </div>
+
+                {detail.purchase_order && (
+                    <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800">
+                        Goods receipt for purchase order <strong>{detail.purchase_order.order_number}</strong>.
+                        Validating this picking books stock into the warehouse and updates the purchase order's received quantities.
+                    </div>
+                )}
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                     <div className="px-6 py-4 border-b border-gray-200"><h3 className="font-semibold text-gray-900">Stock Moves</h3></div>
                     <div className="overflow-x-auto">
@@ -291,21 +307,24 @@ export default function StockPickingsPage() {
                             <thead className="bg-gray-50"><tr>
                                 <th className="px-4 py-3 text-left font-medium text-gray-600">#</th>
                                 <th className="px-4 py-3 text-left font-medium text-gray-600">Product</th>
-                                <th className="px-4 py-3 text-right font-medium text-gray-600">Reserved</th>
+                                <th className="px-4 py-3 text-right font-medium text-gray-600">Quantity</th>
                                 <th className="px-4 py-3 text-right font-medium text-gray-600">Done</th>
                                 <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
                             </tr></thead>
                             <tbody className="divide-y divide-gray-100">
-                                {(detail.stock_moves || []).map((m, i) => (
-                                    <tr key={i} className="hover:bg-gray-50">
+                                {(detail.moves || []).map((m, i) => (
+                                    <tr key={m.id || i} className="hover:bg-gray-50">
                                         <td className="px-4 py-3 text-gray-500">{i + 1}</td>
-                                        <td className="px-4 py-3 font-medium">{m.product?.name || '-'}</td>
-                                        <td className="px-4 py-3 text-right">{m.reserved_qty || 0}</td>
+                                        <td className="px-4 py-3 font-medium">
+                                            {m.product?.name || '-'}
+                                            {m.product?.code && <span className="ml-2 text-xs text-gray-400">{m.product.code}</span>}
+                                        </td>
+                                        <td className="px-4 py-3 text-right">{m.quantity} {m.uom?.symbol || ''}</td>
                                         <td className="px-4 py-3 text-right font-medium">{m.done_qty || 0}</td>
                                         <td className="px-4 py-3"><StatusBadge status={m.status} /></td>
                                     </tr>
                                 ))}
-                                {(detail.stock_moves || []).length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No moves</td></tr>}
+                                {(detail.moves || []).length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No moves</td></tr>}
                             </tbody>
                         </table>
                     </div>
@@ -349,8 +368,8 @@ export default function StockPickingsPage() {
                                 <th className="px-4 py-3 text-left font-medium text-gray-600">Number</th>
                                 <th className="px-4 py-3 text-left font-medium text-gray-600">Type</th>
                                 <th className="px-4 py-3 text-left font-medium text-gray-600">Scheduled</th>
-                                <th className="px-4 py-3 text-left font-medium text-gray-600">Source</th>
-                                <th className="px-4 py-3 text-left font-medium text-gray-600">Destination</th>
+                                <th className="px-4 py-3 text-left font-medium text-gray-600">Source → Destination</th>
+                                <th className="px-4 py-3 text-left font-medium text-gray-600">Purchase Order</th>
                                 <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
                                 <th className="px-4 py-3 text-center font-medium text-gray-600">Actions</th>
                             </tr></thead>
@@ -362,8 +381,14 @@ export default function StockPickingsPage() {
                                             <td className="px-4 py-3"><button onClick={() => loadDetail(p.id)} className="font-medium text-indigo-600 hover:text-indigo-800">{p.picking_number}</button></td>
                                             <td className="px-4 py-3"><div className="flex items-center gap-2"><Icon className="h-4 w-4 text-gray-500" /><span className="capitalize">{p.picking_type}</span></div></td>
                                             <td className="px-4 py-3 text-gray-600">{formatDate(p.scheduled_date)}</td>
-                                            <td className="px-4 py-3">{p.source_warehouse?.name || '-'}</td>
-                                            <td className="px-4 py-3">{p.dest_warehouse?.name || '-'}</td>
+                                            <td className="px-4 py-3 text-gray-600">{p.source_location?.name || '-'} → {p.destination_location?.name || '-'}</td>
+                                            <td className="px-4 py-3 text-gray-600">
+                                                {p.purchase_order ? (
+                                                    <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                                                        {p.purchase_order.order_number}
+                                                    </span>
+                                                ) : '-'}
+                                            </td>
                                             <td className="px-4 py-3"><StatusBadge status={p.status} label={p.status_label} /></td>
                                             <td className="px-4 py-3"><div className="flex items-center justify-center gap-1">
                                                 <button onClick={() => loadDetail(p.id)} className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100"><Eye className="h-4 w-4" /></button>

@@ -8,6 +8,7 @@ use App\Enums\StockMoveStatus;
 use App\Models\StockPicking;
 use App\Repositories\StockPickingRepository;
 use App\Repositories\StockQuantRepository;
+use App\Services\Purchasing\PurchaseOrderService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -108,7 +109,13 @@ class StockPickingService
             $picking->update(['effective_date' => now()]);
 
             foreach ($picking->moves as $move) {
-                $move->update(['status' => StockMoveStatus::Done, 'effective_date' => now()]);
+                $doneQty = (float) $move->done_qty > 0 ? (float) $move->done_qty : (float) $move->quantity;
+
+                $move->update([
+                    'status' => StockMoveStatus::Done,
+                    'done_qty' => $doneQty,
+                    'effective_date' => now(),
+                ]);
 
                 $quant = \App\Models\StockQuant::firstOrCreate(
                     ['product_id' => $move->product_id, 'location_id' => $move->destination_location_id],
@@ -116,10 +123,15 @@ class StockPickingService
                 );
 
                 if ($picking->picking_type === PickingType::Incoming) {
-                    $quant->addQuantity((float) $move->done_qty, (float) $move->unit_cost);
+                    $quant->addQuantity($doneQty, (float) $move->unit_cost);
                 } elseif ($picking->picking_type === PickingType::Outgoing) {
-                    $quant->removeQuantity((float) $move->done_qty);
+                    $quant->removeQuantity($doneQty);
                 }
+            }
+
+            // Goods received against a purchase order automatically become payable to the vendor.
+            if ($picking->purchase_order_id) {
+                app(PurchaseOrderService::class)->syncReceivedQuantities($picking->purchase_order_id);
             }
 
             return $this->repository->findWithMoves($id);

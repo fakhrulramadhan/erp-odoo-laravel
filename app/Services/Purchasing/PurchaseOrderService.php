@@ -32,6 +32,50 @@ class PurchaseOrderService
         return $this->repository->getWithRelations($filters, $perPage);
     }
 
+    /**
+     * Recompute received quantities and status from all validated pickings.
+     * Called by Inventory when a goods receipt is validated.
+     */
+    public function syncReceivedQuantities(int $id): void
+    {
+        $po = $this->repository->findWithLines($id);
+
+        if (!in_array($po->status, [PurchaseOrderStatus::Ordered, PurchaseOrderStatus::PartialReceived])) {
+            return;
+        }
+
+        $pickings = $po->pickings()->where('status', PickingStatus::Done->value)->with('moves')->get();
+        if ($pickings->isEmpty()) {
+            return;
+        }
+
+        $receivedByProduct = [];
+        foreach ($pickings as $picking) {
+            foreach ($picking->moves as $move) {
+                $receivedByProduct[$move->product_id] = ($receivedByProduct[$move->product_id] ?? 0) + (float) $move->done_qty;
+            }
+        }
+
+        foreach ($po->lines as $line) {
+            $line->update([
+                'received_qty' => min((float) $line->quantity, $receivedByProduct[$line->product_id] ?? 0),
+            ]);
+        }
+
+        $po->recalculate();
+
+        $target = $po->isFullyReceived() ? PurchaseOrderStatus::Received : PurchaseOrderStatus::PartialReceived;
+        if ($po->status !== $target) {
+            $po->transitionTo($target);
+        }
+
+        // Fully received goods are payable: raise (or refresh) the vendor invoice for Finance automatically.
+        if ($target === PurchaseOrderStatus::Received) {
+            $po->refresh();
+            $this->buildVendorInvoice($po->load('lines'));
+        }
+    }
+
     public function find(int $id): PurchaseOrder
     {
         return $this->repository->findWithLines($id);
@@ -225,29 +269,12 @@ class PurchaseOrderService
                 throw new \DomainException('Cannot receive a purchase order that is not ordered or partially received.');
             }
 
-            $pickings = $po->pickings()->where('status', PickingStatus::Done->value)->with('moves')->get();
-            if ($pickings->isEmpty()) {
+            $hasDonePicking = $po->pickings()->where('status', PickingStatus::Done->value)->exists();
+            if (!$hasDonePicking) {
                 throw new \DomainException('No validated stock picking found for this purchase order.');
             }
 
-            $receivedByProduct = [];
-            foreach ($pickings as $picking) {
-                foreach ($picking->moves as $move) {
-                    $receivedByProduct[$move->product_id] = ($receivedByProduct[$move->product_id] ?? 0) + (float) $move->done_qty;
-                }
-            }
-
-            foreach ($po->lines as $line) {
-                $received = min((float) $line->quantity, $receivedByProduct[$line->product_id] ?? 0);
-                $line->update(['received_qty' => $received]);
-            }
-
-            $po->recalculate();
-
-            $target = $po->isFullyReceived() ? PurchaseOrderStatus::Received : PurchaseOrderStatus::PartialReceived;
-            if ($po->status !== $target) {
-                $po->transitionTo($target);
-            }
+            $this->syncReceivedQuantities($id);
 
             return $this->repository->findWithLines($id);
         });
@@ -262,14 +289,25 @@ class PurchaseOrderService
                 throw new \DomainException('Cannot generate vendor invoice for a purchase order that is not received or partially received.');
             }
 
-            $existing = Invoice::where('source_type', 'purchase_order')
-                ->where('source_id', $po->id)
-                ->where('invoice_type', 'vendor')
-                ->first();
-            if ($existing) {
-                throw new \DomainException('A vendor invoice already exists for this purchase order.');
-            }
+            return $this->buildVendorInvoice($po);
+        });
+    }
 
+    protected function buildVendorInvoice(PurchaseOrder $po): Invoice
+    {
+        $existing = Invoice::where('source_type', 'purchase_order')
+            ->where('source_id', $po->id)
+            ->where('invoice_type', 'vendor')
+            ->first();
+
+        if ($existing) {
+            // A posted/paid invoice is final; only a draft follows the received quantities.
+            if ($existing->status !== FinanceStatus::Draft) {
+                return $existing;
+            }
+            $existing->items()->delete();
+            $invoice = $existing;
+        } else {
             $invoice = Invoice::create([
                 'company_id' => $po->company_id,
                 'invoice_number' => app(\App\Services\Finance\FinanceService::class)->generateNumber('INV'),
@@ -284,35 +322,38 @@ class PurchaseOrderService
                 'notes' => 'Vendor invoice for ' . $po->order_number,
                 'created_by' => Auth::id(),
             ]);
+        }
 
-            $subtotal = 0;
-            foreach ($po->lines as $line) {
-                $qty = (float) $line->received_qty;
-                $unitPrice = (float) $line->price;
-                $lineTotal = round($qty * $unitPrice, 2);
-                $subtotal += $lineTotal;
-
-                $invoice->items()->create([
-                    'product_id' => $line->product_id,
-                    'description' => $line->description ?? 'PO Line #' . $line->line_number,
-                    'quantity' => $qty,
-                    'unit_price' => $unitPrice,
-                    'discount_rate' => 0,
-                    'discount_amount' => 0,
-                    'tax_amount' => 0,
-                    'line_total' => $lineTotal,
-                ]);
+        $subtotal = 0;
+        foreach ($po->lines as $line) {
+            $qty = (float) $line->received_qty;
+            if ($qty <= 0) {
+                continue;
             }
+            $unitPrice = (float) $line->price;
+            $lineTotal = round($qty * $unitPrice, 2);
+            $subtotal += $lineTotal;
 
-            $invoice->update([
-                'subtotal' => round($subtotal, 2),
+            $invoice->items()->create([
+                'product_id' => $line->product_id,
+                'description' => $line->description ?? 'PO Line #' . $line->line_number,
+                'quantity' => $qty,
+                'unit_price' => $unitPrice,
+                'discount_rate' => 0,
                 'discount_amount' => 0,
                 'tax_amount' => 0,
-                'total_amount' => round($subtotal, 2),
-                'balance_amount' => round($subtotal, 2),
+                'line_total' => $lineTotal,
             ]);
+        }
 
-            return $invoice->fresh()->load('items');
-        });
+        $invoice->update([
+            'subtotal' => round($subtotal, 2),
+            'discount_amount' => 0,
+            'tax_amount' => 0,
+            'total_amount' => round($subtotal, 2),
+            'balance_amount' => round($subtotal - (float) $invoice->paid_amount, 2),
+        ]);
+
+        return $invoice->fresh()->load('items');
     }
 }
