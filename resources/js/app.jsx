@@ -30,6 +30,9 @@ import InventoryAdjustmentsPage from './pages/inventory/InventoryAdjustmentsPage
 
 // Reports
 import ReportsPage from './pages/reports/ReportsPage';
+import InventoryGlReconciliationPage from './pages/reports/InventoryGlReconciliationPage';
+import StockLedgerPage from './pages/inventory/StockLedgerPage';
+import SalesOrdersPage from './pages/sales/SalesOrdersPage';
 
 // Phase 3: Finance
 import FinanceDashboardPage from './pages/finance/FinanceDashboardPage';
@@ -154,6 +157,9 @@ export default function App() {
 
                         {/* Reports */}
                         <Route path="/reports" element={<ReportsPage />} />
+                        <Route path="/reports/inventory-gl" element={<InventoryGlReconciliationPage />} />
+                        <Route path="/inventory/stock-ledger/:productId" element={<StockLedgerPage />} />
+                        <Route path="/sales/orders" element={<SalesOrdersPage />} />
 
                         {/* Manufacturing */}
                         <Route path="/manufacturing" element={<ManufacturingDashboardPage />} />

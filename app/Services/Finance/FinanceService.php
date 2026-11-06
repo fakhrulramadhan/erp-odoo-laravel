@@ -17,6 +17,7 @@ use App\Models\PaymentTerm;
 use App\Models\Tax;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class FinanceService
@@ -215,8 +216,45 @@ class FinanceService
                 'posted_at' => now(),
             ]);
 
+            // Customer invoices that were not raised by a sales order still need
+            // their receivable and revenue recognised in the ledger.
+            if ($invoice->invoice_type === 'customer' && $invoice->source_type !== 'sales_order') {
+                $this->postCustomerInvoiceJournal($invoice);
+            }
+
             return $invoice->fresh()->load('items');
         });
+    }
+
+    /**
+     * Dr Accounts Receivable / Cr Sales Revenue.
+     */
+    protected function postCustomerInvoiceJournal(Invoice $invoice): void
+    {
+        $amount = round((float) $invoice->total_amount, 2);
+        if ($amount <= 0) {
+            return;
+        }
+
+        $journal = Journal::where('code', 'MJ')->first() ?? Journal::first();
+        $receivable = Account::where('code', '1130')->first();
+        $revenue = Account::where('code', '4010')->first();
+
+        if (!$journal || !$receivable || !$revenue) {
+            Log::warning('Customer invoice journal skipped: missing journal or 1130/4010 account.');
+            return;
+        }
+
+        $this->createJournalEntry([
+            'journal_id' => $journal->id,
+            'entry_date' => $invoice->invoice_date?->toDateString() ?? now()->toDateString(),
+            'description' => "Customer invoice {$invoice->invoice_number}",
+            'reference' => $invoice->invoice_number,
+            'lines' => [
+                ['account_id' => $receivable->id, 'debit_amount' => $amount, 'credit_amount' => 0, 'description' => 'Accounts Receivable'],
+                ['account_id' => $revenue->id, 'debit_amount' => 0, 'credit_amount' => $amount, 'description' => 'Sales Revenue'],
+            ],
+        ]);
     }
 
     public function createPayment(array $data): Payment
@@ -276,6 +314,8 @@ class FinanceService
                 'posted_at' => now(),
             ]);
 
+            $this->postPaymentJournal($payment);
+
             if ($payment->allocations->isNotEmpty()) {
                 foreach ($payment->allocations as $allocation) {
                     $invoice = Invoice::findOrFail($allocation->invoice_id);
@@ -290,6 +330,58 @@ class FinanceService
 
             return $payment->fresh()->load('allocations');
         });
+    }
+
+    /**
+     * Vendor payment: Dr Accounts Payable / Cr Cash or Bank.
+     * Customer payment: Dr Cash or Bank / Cr Accounts Receivable.
+     *
+     * Without this the payment only moved invoice balances, so the cash and
+     * payable accounts in the ledger never changed.
+     */
+    protected function postPaymentJournal(Payment $payment): void
+    {
+        $amount = round((float) $payment->amount, 2);
+        if ($amount <= 0) {
+            return;
+        }
+
+        $journal = Journal::where('code', 'MJ')->first() ?? Journal::first();
+        if (!$journal) {
+            Log::warning('Payment journal skipped: no journal configured.');
+            return;
+        }
+
+        // Bank transfers hit 1020, everything else settles through cash 1010.
+        $cashCode = $payment->bank_account_id ? '1020' : '1010';
+        $isVendor = $payment->payment_type === 'vendor' || $payment->vendor_id !== null;
+        $counterpartyCode = $isVendor ? '2110' : '1130';
+
+        $cashAccount = Account::where('code', $cashCode)->first();
+        $counterparty = Account::where('code', $counterpartyCode)->first();
+
+        if (!$cashAccount || !$counterparty) {
+            Log::warning('Payment journal skipped: missing account ' . ($cashAccount ? $counterpartyCode : $cashCode));
+            return;
+        }
+
+        $lines = $isVendor
+            ? [
+                ['account_id' => $counterparty->id, 'debit_amount' => $amount, 'credit_amount' => 0, 'description' => 'Accounts Payable - ' . $payment->payment_number],
+                ['account_id' => $cashAccount->id, 'debit_amount' => 0, 'credit_amount' => $amount, 'description' => 'Cash payment - ' . $payment->payment_number],
+            ]
+            : [
+                ['account_id' => $cashAccount->id, 'debit_amount' => $amount, 'credit_amount' => 0, 'description' => 'Cash receipt - ' . $payment->payment_number],
+                ['account_id' => $counterparty->id, 'debit_amount' => 0, 'credit_amount' => $amount, 'description' => 'Accounts Receivable - ' . $payment->payment_number],
+            ];
+
+        $this->createJournalEntry([
+            'journal_id' => $journal->id,
+            'entry_date' => $payment->payment_date?->toDateString() ?? now()->toDateString(),
+            'description' => ($isVendor ? 'Vendor payment ' : 'Customer payment ') . $payment->payment_number,
+            'reference' => $payment->payment_number,
+            'lines' => $lines,
+        ]);
     }
 
     public function generateNumber(string $prefix): string

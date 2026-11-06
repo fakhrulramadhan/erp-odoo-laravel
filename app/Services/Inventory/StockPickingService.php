@@ -121,8 +121,13 @@ class StockPickingService
                     'effective_date' => now(),
                 ]);
 
+                $isIncoming = $picking->picking_type === PickingType::Incoming;
+                $quantLocationId = $isIncoming
+                    ? $move->destination_location_id
+                    : $move->source_location_id;
+
                 $quant = \App\Models\StockQuant::firstOrCreate(
-                    ['product_id' => $move->product_id, 'location_id' => $move->destination_location_id],
+                    ['product_id' => $move->product_id, 'location_id' => $quantLocationId],
                     ['quantity' => 0, 'reserved_quantity' => 0, 'available_quantity' => 0, 'unit_cost' => $move->unit_cost ?? 0]
                 );
 
@@ -165,6 +170,11 @@ class StockPickingService
             // Goods received against a purchase order automatically become payable to the vendor.
             if ($picking->purchase_order_id) {
                 app(PurchaseOrderService::class)->syncReceivedQuantities($picking->purchase_order_id);
+            }
+
+            // Shipped goods update the sales order's delivered quantities.
+            if ($picking->sales_order_id) {
+                app(\App\Services\Sales\SalesOrderService::class)->syncDeliveredQuantities($picking->sales_order_id);
             }
 
             return $this->repository->findWithMoves($id);

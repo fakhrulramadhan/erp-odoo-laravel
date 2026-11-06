@@ -5,9 +5,9 @@ import {
     Landmark, MapPin, Briefcase, DollarSign,
     Hash, Receipt, Database, Package, Ruler,
     Boxes, Truck, Warehouse, CreditCard, BookOpen,
-    ShoppingCart, ClipboardList, BarChart3, PackageCheck, ClipboardCheck,
+    ShoppingCart, ClipboardList, BarChart3, PackageCheck, ClipboardCheck, ShoppingBag,
     Factory, Wrench, ArrowRightLeft, AlertTriangle,
-    UserCheck, Clock, CalendarDays, Banknote, UserPlus, Contact, FileCheck, Timer, ScrollText
+    UserCheck, Clock, CalendarDays, Banknote, UserPlus, Contact, FileCheck, Timer, ScrollText, Scale
 } from 'lucide-react';
 import Logo from '../ui/Logo';
 import { useState } from 'react';
@@ -38,6 +38,13 @@ const navigation = [
             { name: 'Supplier Quotations', to: '/purchasing/quotations', icon: ClipboardList },
             { name: 'Purchase Requisitions', to: '/purchasing/requisitions', icon: ClipboardCheck },
             { name: 'Vendor Pricelists', to: '/purchasing/pricelists', icon: DollarSign },
+        ],
+    },
+    {
+        name: 'Sales',
+        icon: ShoppingBag,
+        children: [
+            { name: 'Sales Orders', to: '/sales/orders', icon: FileText },
         ],
     },
     {
@@ -77,6 +84,7 @@ const navigation = [
         ],
     },
     { name: 'Reports', to: '/reports', icon: BarChart3 },
+    { name: 'Inventory vs GL', to: '/reports/inventory-gl', icon: Scale },
     {
         name: 'Settings',
         icon: Settings,

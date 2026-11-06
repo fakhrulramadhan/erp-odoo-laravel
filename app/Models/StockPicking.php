@@ -20,7 +20,7 @@ class StockPicking extends Model
         'source_location_id', 'destination_location_id',
         'vendor_id', 'customer_id',
         'scheduled_date', 'effective_date',
-        'purchase_order_id', 'notes', 'internal_notes',
+        'purchase_order_id', 'sales_order_id', 'notes', 'internal_notes',
         'created_by', 'updated_by', 'deleted_by',
     ];
 
@@ -40,6 +40,7 @@ class StockPicking extends Model
     public function vendor(): BelongsTo { return $this->belongsTo(Vendor::class); }
     public function customer(): BelongsTo { return $this->belongsTo(Customer::class); }
     public function purchaseOrder(): BelongsTo { return $this->belongsTo(PurchaseOrder::class); }
+    public function salesOrder(): BelongsTo { return $this->belongsTo(SalesOrder::class); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
     public function moves(): HasMany { return $this->hasMany(StockMove::class); }
 

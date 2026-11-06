@@ -150,6 +150,7 @@ export const inventoryApi = {
     productStock: (productId) => api.get(`/v1/inventory/quants/product/${productId}`),
     totalOnHand: (productId) => api.get(`/v1/inventory/quants/on-hand/${productId}`),
     lowStock: () => api.get('/v1/inventory/quants/low-stock'),
+    stockLedger: (productId, params) => api.get(`/v1/inventory/stock-ledger/${productId}`, { params }),
     // Adjustments CRUD
     adjustments: (params) => api.get('/v1/inventory/adjustments', { params }),
     store: (data) => api.post('/v1/inventory/adjustments', data),
@@ -174,6 +175,18 @@ export const inventoryAdjustmentsApi = {
 };
 
 // ─── Reports ─────────────────────────────────────
+export const salesOrdersApi = {
+    list: (params) => api.get('/v1/sales/orders', { params }),
+    store: (data) => api.post('/v1/sales/orders', data),
+    show: (id) => api.get(`/v1/sales/orders/${id}`),
+    update: (id, data) => api.put(`/v1/sales/orders/${id}`, data),
+    destroy: (id) => api.delete(`/v1/sales/orders/${id}`),
+    confirm: (id) => api.post(`/v1/sales/orders/${id}/confirm`),
+    cancel: (id) => api.post(`/v1/sales/orders/${id}/cancel`),
+    createDelivery: (id) => api.post(`/v1/sales/orders/${id}/create-delivery`),
+    createInvoice: (id) => api.post(`/v1/sales/orders/${id}/create-invoice`),
+};
+
 export const reportsApi = {
     purchasing: (params) => api.get('/v1/reports/purchasing', { params }),
     inventory: (params) => api.get('/v1/reports/inventory', { params }),

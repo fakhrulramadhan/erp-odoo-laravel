@@ -41,8 +41,60 @@ class ReportController extends Controller
             'by_warehouse' => $this->inventoryByWarehouse($request),
             'low_stock'    => $this->inventoryLowStock($request),
             'stock_value'  => $this->inventoryStockValue($request),
+            'gl_reconciliation' => $this->inventoryGlReconciliation($request),
             default        => $this->inventorySummary($request),
         };
+    }
+
+    /**
+     * Inventory valuation as recorded in stock quants versus the Inventory
+     * account balance in the ledger. Any variance means a journal was skipped
+     * or posted twice.
+     */
+    private function inventoryGlReconciliation(Request $request): JsonResponse
+    {
+        $byWarehouse = StockQuant::query()
+            ->join('stock_locations', 'stock_locations.id', '=', 'stock_quants.location_id')
+            ->join('warehouses', 'warehouses.id', '=', 'stock_locations.warehouse_id')
+            ->groupBy('warehouses.id', 'warehouses.name')
+            ->select(
+                'warehouses.id as warehouse_id',
+                'warehouses.name as warehouse_name',
+                DB::raw('COALESCE(SUM(stock_quants.quantity * stock_quants.unit_cost), 0) as stock_value')
+            )
+            ->get()
+            ->map(fn ($r) => [
+                'warehouse_id' => (int) $r->warehouse_id,
+                'warehouse_name' => $r->warehouse_name,
+                'stock_value' => round((float) $r->stock_value, 2),
+            ]);
+
+        $stockValue = round((float) $byWarehouse->sum('stock_value'), 2);
+
+        $accounts = \App\Models\Account::whereIn('code', ['1030', '1300'])
+            ->get(['code', 'name', 'current_balance'])
+            ->keyBy('code');
+
+        $inventoryGl = round((float) ($accounts['1030']->current_balance ?? 0), 2);
+        $wipGl = round((float) ($accounts['1300']->current_balance ?? 0), 2);
+        $variance = round($inventoryGl - $stockValue, 2);
+
+        return $this->success([
+            'stock_value' => $stockValue,
+            'inventory_account' => [
+                'code' => '1030',
+                'name' => $accounts['1030']->name ?? 'Inventory',
+                'balance' => $inventoryGl,
+            ],
+            'wip_account' => [
+                'code' => '1300',
+                'name' => $accounts['1300']->name ?? 'Work In Progress',
+                'balance' => $wipGl,
+            ],
+            'variance' => $variance,
+            'is_reconciled' => abs($variance) < 0.01,
+            'by_warehouse' => $byWarehouse,
+        ]);
     }
 
     // ─── Purchasing Reports ────────────────────────

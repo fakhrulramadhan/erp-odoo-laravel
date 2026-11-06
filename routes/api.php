@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\Purchasing\PurchaseRequisitionController;
 use App\Http\Controllers\Api\V1\Inventory\StockPickingController;
 use App\Http\Controllers\Api\V1\Inventory\InventoryController;
 use App\Http\Controllers\Api\V1\Reports\ReportController;
+use App\Http\Controllers\Api\V1\Sales\SalesOrderController;
 use App\Http\Controllers\Api\V1\Finance\FinanceController;
 use App\Http\Controllers\Api\V1\Manufacturing\WorkCenterController;
 use App\Http\Controllers\Api\V1\Manufacturing\RoutingController;
@@ -195,6 +196,19 @@ Route::prefix('v1')->group(function () {
             Route::post('requisitions/{id}/cancel', [PurchaseRequisitionController::class, 'cancel']);
         });
 
+        // ─── Sales ──────────────────────────────────
+        Route::prefix('sales')->group(function () {
+            Route::get('orders', [SalesOrderController::class, 'index']);
+            Route::post('orders', [SalesOrderController::class, 'store']);
+            Route::get('orders/{id}', [SalesOrderController::class, 'show']);
+            Route::put('orders/{id}', [SalesOrderController::class, 'update']);
+            Route::delete('orders/{id}', [SalesOrderController::class, 'destroy']);
+            Route::post('orders/{id}/confirm', [SalesOrderController::class, 'confirm']);
+            Route::post('orders/{id}/cancel', [SalesOrderController::class, 'cancel']);
+            Route::post('orders/{id}/create-delivery', [SalesOrderController::class, 'createDelivery']);
+            Route::post('orders/{id}/create-invoice', [SalesOrderController::class, 'createInvoice']);
+        });
+
         // ─── Phase 2: Inventory ─────────────────────
         Route::prefix('inventory')->group(function () {
 
@@ -213,6 +227,9 @@ Route::prefix('v1')->group(function () {
             Route::get('quants/product/{productId}', [InventoryController::class, 'productStock']);
             Route::get('quants/product/{productId}/on-hand', [InventoryController::class, 'totalOnHand']);
             Route::get('quants/low-stock', [InventoryController::class, 'lowStock']);
+
+            // Stock Card / Ledger
+            Route::get('stock-ledger/{productId}', [InventoryController::class, 'stockLedger']);
 
             // Inventory Adjustments
             Route::get('adjustments', [InventoryController::class, 'adjustments']);

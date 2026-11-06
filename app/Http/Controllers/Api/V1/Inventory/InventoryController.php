@@ -54,6 +54,16 @@ class InventoryController extends Controller
         return $this->success(StockQuantResource::collection($quants));
     }
 
+    /**
+     * Stock card: movement history with a running balance.
+     */
+    public function stockLedger(int $productId, Request $request): JsonResponse
+    {
+        $filters = $request->only(['location_id', 'date_from', 'date_to']);
+
+        return $this->success($this->service->getStockLedger($productId, $filters));
+    }
+
     // ─── Inventory Adjustments ─────────────────────
 
     public function adjustments(Request $request): JsonResponse
