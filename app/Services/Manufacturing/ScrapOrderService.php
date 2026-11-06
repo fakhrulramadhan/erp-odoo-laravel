@@ -6,6 +6,7 @@ use App\Models\ScrapOrder;
 use App\Models\StockQuant;
 use App\Repositories\ScrapOrderRepository;
 use App\Services\Finance\FinanceService;
+use App\Services\Inventory\InventoryValuationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -14,6 +15,7 @@ class ScrapOrderService
     public function __construct(
         protected ScrapOrderRepository $repository,
         protected FinanceService $financeService,
+        protected InventoryValuationService $valuationService,
     ) {}
 
     public function list(array $filters = [], ?int $perPage = 15): LengthAwarePaginator
@@ -112,38 +114,10 @@ class ScrapOrderService
     {
         if ($scrap->total_cost <= 0) return;
 
-        try {
-            $journal = \App\Models\Journal::where('code', 'MJ')->first()
-                ?? \App\Models\Journal::first();
-            if (!$journal) return;
-
-            $scrapExpenseAccount = \App\Models\Account::where('code', '5200')->first(); // Scrap Expense
-            $inventoryAccount = \App\Models\Account::where('code', '1200')->first(); // Inventory
-
-            if (!$scrapExpenseAccount || !$inventoryAccount) return;
-
-            $this->financeService->createJournalEntry([
-                'journal_id' => $journal->id,
-                'entry_date' => now()->toDateString(),
-                'description' => "Scrap: {$scrap->scrap_number} - {$scrap->reason}",
-                'reference' => $scrap->scrap_number,
-                'lines' => [
-                    [
-                        'account_id' => $scrapExpenseAccount->id,
-                        'description' => 'Scrap Expense - ' . ($scrap->product?->name ?? ''),
-                        'debit_amount' => $scrap->total_cost,
-                        'credit_amount' => 0,
-                    ],
-                    [
-                        'account_id' => $inventoryAccount->id,
-                        'description' => 'Inventory Reduction - ' . $scrap->scrap_number,
-                        'debit_amount' => 0,
-                        'credit_amount' => $scrap->total_cost,
-                    ],
-                ],
-            ]);
-        } catch (\Exception $e) {
-            \Log::warning('Failed to create scrap journal: ' . $e->getMessage());
-        }
+        $this->valuationService->recordScrap(
+            $scrap->scrap_number,
+            (float) $scrap->total_cost,
+            "Scrap {$scrap->scrap_number} - {$scrap->reason}"
+        );
     }
 }

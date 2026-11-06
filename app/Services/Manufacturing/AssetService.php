@@ -245,7 +245,7 @@ class AssetService
             $assetAccount = \App\Models\Account::find($category->asset_account_id);
             $accumulatedAccount = \App\Models\Account::find($category->accumulated_depreciation_account_id);
             $disposalAccount = \App\Models\Account::find($category->disposal_account_id);
-            $cashAccount = \App\Models\Account::where('code', '1000')->first();
+            $cashAccount = \App\Models\Account::where('code', '1010')->first(); // Cash & Bank
 
             if (!$assetAccount || !$accumulatedAccount) return;
 
@@ -256,7 +256,7 @@ class AssetService
                 'account_id' => $assetAccount->id,
                 'description' => 'Asset Disposal - ' . $asset->name,
                 'debit_amount' => 0,
-                'credit_amount' => (float) $asset->acquisition_cost,
+                'credit_amount' => (float) $asset->purchase_value,
             ];
 
             // Debit: Accumulated Depreciation
@@ -298,6 +298,31 @@ class AssetService
                             'credit_amount' => 0,
                         ];
                     }
+                }
+            }
+
+            // Guarantee the entry balances even when the gain/loss account is missing
+            $debitTotal = array_sum(array_column($lines, 'debit_amount'));
+            $creditTotal = array_sum(array_column($lines, 'credit_amount'));
+            $difference = round($debitTotal - $creditTotal, 2);
+
+            if (abs($difference) > 0.01) {
+                $suspenseAccount = \App\Models\Account::where('code', '8000')->first()
+                    ?? \App\Models\Account::where('code', '5020')->first();
+
+                if ($suspenseAccount) {
+                    $lines[] = [
+                        'account_id' => $suspenseAccount->id,
+                        'description' => 'Disposal Balancing Entry',
+                        'debit_amount' => $difference > 0 ? 0 : abs($difference),
+                        'credit_amount' => $difference > 0 ? $difference : 0,
+                    ];
+                } else {
+                    \Log::warning('Asset disposal journal unbalanced and no suspense account available', [
+                        'asset_id' => $asset->id,
+                        'difference' => $difference,
+                    ]);
+                    return;
                 }
             }
 

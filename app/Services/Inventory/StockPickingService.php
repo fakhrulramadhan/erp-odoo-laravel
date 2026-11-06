@@ -17,6 +17,7 @@ class StockPickingService
     public function __construct(
         protected StockPickingRepository $repository,
         protected StockQuantRepository $quantRepository,
+        protected InventoryValuationService $valuationService,
     ) {}
 
     public function list(array $filters = [], ?int $perPage = 15): LengthAwarePaginator
@@ -38,6 +39,9 @@ class StockPickingService
             $data['picking_number'] = $this->repository->getNextPickingNumber($data['picking_type'] ?? 'incoming');
             $data['status'] = PickingStatus::Draft;
             $data['created_by'] = auth()->id();
+            $data['company_id'] ??= auth()->user()?->company_id
+                ?? \App\Models\Company::query()->orderBy('id')->value('id');
+            $data['scheduled_date'] ??= now()->toDateString();
 
             $picking = $this->repository->create($data);
 
@@ -124,8 +128,37 @@ class StockPickingService
 
                 if ($picking->picking_type === PickingType::Incoming) {
                     $quant->addQuantity($doneQty, (float) $move->unit_cost);
+
+                    // Goods received from a vendor: Inventory up, GRNI up.
+                    $this->valuationService->recordGoodsReceipt(
+                        $picking->picking_number,
+                        $doneQty * (float) $move->unit_cost,
+                        "Goods receipt {$picking->picking_number} - " . ($move->product?->name ?? 'product')
+                    );
                 } elseif ($picking->picking_type === PickingType::Outgoing) {
-                    $quant->removeQuantity($doneQty);
+                    // Goods leave the source location; the destination is a
+                    // customer/site that is not tracked as stock.
+                    $sourceQuant = \App\Models\StockQuant::firstOrCreate(
+                        ['product_id' => $move->product_id, 'location_id' => $move->source_location_id],
+                        ['quantity' => 0, 'reserved_quantity' => 0, 'available_quantity' => 0, 'unit_cost' => 0]
+                    );
+                    $sourceQuant->removeQuantity($doneQty);
+
+                    // Goods shipped to a customer: COGS up, Inventory down.
+                    $this->valuationService->recordGoodsIssue(
+                        $picking->picking_number,
+                        $doneQty * (float) $sourceQuant->unit_cost,
+                        "Goods issue {$picking->picking_number} - " . ($move->product?->name ?? 'product')
+                    );
+                } elseif ($picking->picking_type === PickingType::Internal) {
+                    // Internal transfers move value between locations, so the
+                    // inventory total is unchanged and no journal is needed.
+                    $sourceQuant = \App\Models\StockQuant::firstOrCreate(
+                        ['product_id' => $move->product_id, 'location_id' => $move->source_location_id],
+                        ['quantity' => 0, 'reserved_quantity' => 0, 'available_quantity' => 0, 'unit_cost' => 0]
+                    );
+                    $sourceQuant->removeQuantity($doneQty);
+                    $quant->addQuantity($doneQty, (float) $sourceQuant->unit_cost);
                 }
             }
 

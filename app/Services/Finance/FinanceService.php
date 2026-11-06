@@ -5,6 +5,7 @@ namespace App\Services\Finance;
 use App\Enums\FinanceStatus;
 use App\Models\Account;
 use App\Models\CashAccount;
+use App\Models\Company;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Journal;
@@ -34,11 +35,23 @@ class FinanceService
         return $query->orderBy('code')->get();
     }
 
-    public function createJournalEntry(array $data): JournalEntry
+    /**
+     * Resolve the company the current record belongs to.
+     * Falls back to the first existing company so background/CLI contexts
+     * (seeders, queue jobs) never hit a foreign key violation.
+     */
+    protected function resolveCompanyId(): int
     {
-        return DB::transaction(function () use ($data) {
+        return Auth::user()?->company_id
+            ?? Company::query()->orderBy('id')->value('id')
+            ?? 1;
+    }
+
+    public function createJournalEntry(array $data, bool $autoPost = true): JournalEntry
+    {
+        return DB::transaction(function () use ($data, $autoPost) {
             $entry = JournalEntry::create([
-                'company_id' => Auth::user()?->company_id ?? 1,
+                'company_id' => $this->resolveCompanyId(),
                 'journal_id' => $data['journal_id'],
                 'entry_number' => $this->generateNumber('JE'),
                 'reference' => $data['reference'] ?? null,
@@ -69,6 +82,12 @@ class FinanceService
                 throw new \DomainException('Debit and credit must be balanced.');
             }
 
+            // Operational journals (inventory, production, scrap, assets) are posted
+            // immediately so account balances and financial reports stay current.
+            if ($autoPost) {
+                return $this->postJournalEntry($entry->id);
+            }
+
             return $entry->load('lines.account');
         });
     }
@@ -94,15 +113,38 @@ class FinanceService
                 'posted_at' => now(),
             ]);
 
+            $this->applyAccountBalances($entry);
+
             return $entry->fresh()->load('lines.account');
         });
+    }
+
+    /**
+     * Roll posted journal lines into each account's running balance.
+     */
+    protected function applyAccountBalances(JournalEntry $entry): void
+    {
+        foreach ($entry->lines as $line) {
+            $account = Account::find($line->account_id);
+            if (!$account) {
+                continue;
+            }
+
+            $debit = (float) $line->debit_amount;
+            $credit = (float) $line->credit_amount;
+            $delta = $account->normal_balance === 'credit' ? $credit - $debit : $debit - $credit;
+
+            $account->update([
+                'current_balance' => round((float) $account->current_balance + $delta, 2),
+            ]);
+        }
     }
 
     public function createInvoice(array $data): Invoice
     {
         return DB::transaction(function () use ($data) {
             $invoice = Invoice::create([
-                'company_id' => Auth::user()?->company_id ?? 1,
+                'company_id' => $this->resolveCompanyId(),
                 'invoice_number' => $this->generateNumber('INV'),
                 'invoice_type' => $data['invoice_type'],
                 'customer_id' => $data['customer_id'] ?? null,
@@ -181,7 +223,7 @@ class FinanceService
     {
         return DB::transaction(function () use ($data) {
             $payment = Payment::create([
-                'company_id' => Auth::user()?->company_id ?? 1,
+                'company_id' => $this->resolveCompanyId(),
                 'payment_number' => $this->generateNumber('PMT'),
                 'payment_type' => $data['payment_type'],
                 'customer_id' => $data['customer_id'] ?? null,

@@ -13,6 +13,7 @@ use App\Models\StockLocation;
 use App\Models\StockPicking;
 use App\Repositories\PurchaseOrderRepository;
 use App\Services\Finance\FinanceService;
+use App\Services\Inventory\InventoryValuationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -86,6 +87,8 @@ class PurchaseOrderService
             $data['order_number'] = $this->repository->getNextOrderNumber();
             $data['status'] = PurchaseOrderStatus::Draft;
             $data['created_by'] = auth()->id();
+            $data['company_id'] ??= auth()->user()?->company_id
+                ?? \App\Models\Company::query()->orderBy('id')->value('id');
 
             $po = $this->repository->create($data);
 
@@ -385,6 +388,18 @@ class PurchaseOrderService
             'total_amount' => round($subtotal, 2),
             'balance_amount' => round($subtotal - (float) $invoice->paid_amount, 2),
         ]);
+
+        // Post the invoice so it shows up in Finance payables straight away.
+        if ($invoice->status === FinanceStatus::Draft) {
+            $invoice = app(\App\Services\Finance\FinanceService::class)->postInvoice($invoice->id);
+        }
+
+        // Settle the goods-received accrual against the vendor payable.
+        app(InventoryValuationService::class)->recordVendorInvoice(
+            $po->order_number,
+            (float) $invoice->total_amount,
+            "Vendor invoice {$invoice->invoice_number} for {$po->order_number}"
+        );
 
         return $invoice->fresh()->load('items');
     }

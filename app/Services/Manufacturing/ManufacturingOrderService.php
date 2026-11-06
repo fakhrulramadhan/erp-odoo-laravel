@@ -10,6 +10,7 @@ use App\Models\StockQuant;
 use App\Repositories\ManufacturingOrderRepository;
 use App\Services\Finance\FinanceService;
 use App\Services\Inventory\InventoryService;
+use App\Services\Inventory\InventoryValuationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -19,6 +20,7 @@ class ManufacturingOrderService
         protected ManufacturingOrderRepository $repository,
         protected FinanceService $financeService,
         protected InventoryService $inventoryService,
+        protected InventoryValuationService $valuationService,
     ) {}
 
     public function list(array $filters = [], ?int $perPage = 15): LengthAwarePaginator
@@ -201,6 +203,9 @@ class ManufacturingOrderService
             // Record production costs
             $this->recordProductionCosts($mo);
 
+            // Create accounting journal: Inventory -> WIP (raw material consumption)
+            $this->createMaterialConsumptionJournal($mo);
+
             // Create accounting journal: WIP -> Finished Goods
             $this->createProductionJournal($mo);
 
@@ -293,45 +298,26 @@ class ManufacturingOrderService
         $mo->recalculate();
     }
 
+    protected function createMaterialConsumptionJournal(ManufacturingOrder $mo): void
+    {
+        $materialCost = (float) $mo->lines()->sum('total_cost');
+        if ($materialCost <= 0) return;
+
+        $this->valuationService->recordMaterialConsumption(
+            $mo->order_number,
+            $materialCost,
+            "Material consumption: {$mo->order_number}"
+        );
+    }
+
     protected function createProductionJournal(ManufacturingOrder $mo): void
     {
         if ($mo->total_cost <= 0) return;
 
-        try {
-            // Debit: Finished Goods (Inventory)
-            // Credit: Work In Progress (WIP)
-            $journal = \App\Models\Journal::where('code', 'MJ')->first()
-                ?? \App\Models\Journal::first();
-
-            if (!$journal) return;
-
-            $finishedGoodsAccount = \App\Models\Account::where('code', '1200')->first(); // Finished Goods
-            $wipAccount = \App\Models\Account::where('code', '1300')->first(); // WIP
-
-            if (!$finishedGoodsAccount || !$wipAccount) return;
-
-            $this->financeService->createJournalEntry([
-                'journal_id' => $journal->id,
-                'entry_date' => now()->toDateString(),
-                'description' => "Production completion: {$mo->order_number}",
-                'reference' => $mo->order_number,
-                'lines' => [
-                    [
-                        'account_id' => $finishedGoodsAccount->id,
-                        'description' => 'Finished Goods - ' . ($mo->product?->name ?? ''),
-                        'debit_amount' => $mo->total_cost,
-                        'credit_amount' => 0,
-                    ],
-                    [
-                        'account_id' => $wipAccount->id,
-                        'description' => 'WIP - ' . $mo->order_number,
-                        'debit_amount' => 0,
-                        'credit_amount' => $mo->total_cost,
-                    ],
-                ],
-            ]);
-        } catch (\Exception $e) {
-            \Log::warning('Failed to create production journal: ' . $e->getMessage());
-        }
+        $this->valuationService->recordProduction(
+            $mo->order_number,
+            (float) $mo->total_cost,
+            "Production completion: {$mo->order_number}"
+        );
     }
 }

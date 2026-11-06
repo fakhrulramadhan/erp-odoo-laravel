@@ -14,6 +14,7 @@ class InventoryService
     public function __construct(
         protected InventoryAdjustmentRepository $adjustmentRepository,
         protected StockQuantRepository $quantRepository,
+        protected InventoryValuationService $valuationService,
     ) {}
 
     public function listAdjustments(array $filters = [], ?int $perPage = 15): LengthAwarePaginator
@@ -35,6 +36,9 @@ class InventoryService
             $data['adjustment_number'] = $this->adjustmentRepository->getNextAdjustmentNumber();
             $data['status'] = 'draft';
             $data['created_by'] = auth()->id();
+            $data['company_id'] ??= auth()->user()?->company_id
+                ?? \App\Models\Company::query()->orderBy('id')->value('id');
+            $data['adjustment_date'] ??= now()->toDateString();
 
             $adjustment = $this->adjustmentRepository->create($data);
 
@@ -95,6 +99,15 @@ class InventoryService
                     } else {
                         $quant->removeQuantity(abs($diff));
                     }
+
+                    $line->update(['difference' => $diff]);
+
+                    // Value the stock difference at the location's unit cost.
+                    $this->valuationService->recordAdjustment(
+                        $adjustment->adjustment_number,
+                        $diff * (float) $quant->unit_cost,
+                        "Stock adjustment {$adjustment->adjustment_number} - " . ($line->product?->name ?? 'product')
+                    );
                 }
             }
 

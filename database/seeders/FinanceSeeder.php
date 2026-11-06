@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Account;
 use App\Models\AccountingPeriod;
 use App\Models\CashAccount;
+use App\Models\Company;
 use App\Models\Currency;
 use App\Models\FiscalYear;
 use App\Models\Journal;
@@ -16,7 +17,7 @@ class FinanceSeeder extends Seeder
 {
     public function run(): void
     {
-        $companyId = 1;
+        $companyId = Company::query()->orderBy('id')->value('id') ?? 1;
         $currency = Currency::where('code', 'IDR')->firstOrFail();
 
         $rootAccounts = [
@@ -33,8 +34,18 @@ class FinanceSeeder extends Seeder
 
         Account::firstOrCreate(['code' => '1010'], ['company_id' => $companyId, 'code' => '1010', 'name' => 'Cash', 'account_type' => 'asset', 'normal_balance' => 'debit', 'journal_type' => 'cash']);
         Account::firstOrCreate(['code' => '1020'], ['company_id' => $companyId, 'code' => '1020', 'name' => 'Bank', 'account_type' => 'asset', 'normal_balance' => 'debit', 'journal_type' => 'bank']);
+        Account::firstOrCreate(['code' => '1030'], ['company_id' => $companyId, 'code' => '1030', 'name' => 'Inventory', 'account_type' => 'asset', 'normal_balance' => 'debit', 'journal_type' => 'general']);
+        Account::firstOrCreate(['code' => '1130'], ['company_id' => $companyId, 'code' => '1130', 'name' => 'Accounts Receivable', 'account_type' => 'asset', 'normal_balance' => 'debit', 'journal_type' => 'general']);
+        Account::firstOrCreate(['code' => '1200'], ['company_id' => $companyId, 'code' => '1200', 'name' => 'Fixed Assets', 'account_type' => 'asset', 'normal_balance' => 'debit', 'journal_type' => 'general']);
+        Account::firstOrCreate(['code' => '1300'], ['company_id' => $companyId, 'code' => '1300', 'name' => 'Work In Progress', 'account_type' => 'asset', 'normal_balance' => 'debit', 'journal_type' => 'general']);
+        Account::firstOrCreate(['code' => '2110'], ['company_id' => $companyId, 'code' => '2110', 'name' => 'Accounts Payable', 'account_type' => 'liability', 'normal_balance' => 'credit', 'journal_type' => 'purchase']);
+        Account::firstOrCreate(['code' => '2120'], ['company_id' => $companyId, 'code' => '2120', 'name' => 'Goods Received Not Invoiced', 'account_type' => 'liability', 'normal_balance' => 'credit', 'journal_type' => 'purchase']);
         Account::firstOrCreate(['code' => '4010'], ['company_id' => $companyId, 'code' => '4010', 'name' => 'Sales Revenue', 'account_type' => 'revenue', 'normal_balance' => 'credit', 'journal_type' => 'sales']);
         Account::firstOrCreate(['code' => '5010'], ['company_id' => $companyId, 'code' => '5010', 'name' => 'Cost of Goods Sold', 'account_type' => 'expense', 'normal_balance' => 'debit', 'journal_type' => 'purchase']);
+        Account::firstOrCreate(['code' => '5020'], ['company_id' => $companyId, 'code' => '5020', 'name' => 'Inventory Adjustment', 'account_type' => 'expense', 'normal_balance' => 'debit', 'journal_type' => 'general']);
+        Account::firstOrCreate(['code' => '5030'], ['company_id' => $companyId, 'code' => '5030', 'name' => 'Scrap Expense', 'account_type' => 'expense', 'normal_balance' => 'debit', 'journal_type' => 'general']);
+        Account::firstOrCreate(['code' => '5040'], ['company_id' => $companyId, 'code' => '5040', 'name' => 'Depreciation Expense', 'account_type' => 'expense', 'normal_balance' => 'debit', 'journal_type' => 'general']);
+        Account::firstOrCreate(['code' => '8000'], ['company_id' => $companyId, 'code' => '8000', 'name' => 'Gain/Loss on Asset Disposal', 'account_type' => 'expense', 'normal_balance' => 'debit', 'journal_type' => 'general']);
 
         Tax::firstOrCreate(['company_id' => $companyId, 'code' => 'PPN'], [
             'company_id' => $companyId,
@@ -79,6 +90,15 @@ class FinanceSeeder extends Seeder
             'name' => 'General Journal',
             'journal_type' => 'general',
             'description' => 'General accounting journal',
+            'is_active' => true,
+        ]);
+
+        Journal::firstOrCreate(['company_id' => $companyId, 'code' => 'MJ'], [
+            'company_id' => $companyId,
+            'code' => 'MJ',
+            'name' => 'Miscellaneous Journal',
+            'journal_type' => 'general',
+            'description' => 'Inventory, production, scrap and asset journals',
             'is_active' => true,
         ]);
 
