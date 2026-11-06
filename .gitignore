@@ -27,3 +27,6 @@ Homestead.yaml
 Thumbs.db
 
 /erp_odoo
+
+# Local autosave snapshots (never commit these)
+/storage/app/autosave/

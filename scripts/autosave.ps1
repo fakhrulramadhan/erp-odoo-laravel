@@ -22,6 +22,7 @@ function Save-Snapshot {
     $dirty = git status --porcelain
     if (-not $dirty) { return }
 
+    New-Item -ItemType Directory -Path $outDir -Force | Out-Null
     # Stage everything so new (untracked) files are included in the diff,
     # then read the diff without touching the index state other tools see.
     git add -A 2>&1 | Out-Null
