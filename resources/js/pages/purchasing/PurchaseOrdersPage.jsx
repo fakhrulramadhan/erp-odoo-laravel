@@ -443,37 +443,37 @@ function PurchaseOrderDetail({ order, onBack, onEdit, onAction, onDelete, loadin
                         </Button>
                     )}
                     {canSubmit && (
-                        <Button onClick={() => onAction('submit', order.id)} className="flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                        <Button onClick={() => onAction('submit', order.id)} className="flex items-center gap-2 bg-indigo-600 text-white hover:bg-indigo-700">
                             <Send className="h-4 w-4" /> Submit
                         </Button>
                     )}
                     {canApprove && (
-                        <Button onClick={() => onAction('approve', order.id)} className="flex items-center gap-2 bg-green-50 text-green-700 hover:bg-green-100">
+                        <Button onClick={() => onAction('approve', order.id)} className="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700">
                             <CheckCircle className="h-4 w-4" /> Approve
                         </Button>
                     )}
                     {canSend && (
-                        <Button onClick={() => onAction('send', order.id)} className="flex items-center gap-2 bg-purple-50 text-purple-700 hover:bg-purple-100">
+                        <Button onClick={() => onAction('send', order.id)} className="flex items-center gap-2 bg-purple-600 text-white hover:bg-purple-700">
                             <Send className="h-4 w-4" /> Send to Vendor
                         </Button>
                     )}
                     {canCreatePicking && (
-                        <Button onClick={() => onAction('createPicking', order.id)} className="flex items-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100">
+                        <Button onClick={() => onAction('createPicking', order.id)} className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700">
                             <Package className="h-4 w-4" /> Create Picking
                         </Button>
                     )}
                     {canReceive && (
-                        <Button onClick={() => onAction('receive', order.id)} className="flex items-center gap-2 bg-green-50 text-green-700 hover:bg-green-100">
+                        <Button onClick={() => onAction('receive', order.id)} className="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700">
                             <Truck className="h-4 w-4" /> Receive Goods
                         </Button>
                     )}
                     {canGenerateInvoice && (
-                        <Button onClick={() => onAction('generateVendorInvoice', order.id)} className="flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                        <Button onClick={() => onAction('generateVendorInvoice', order.id)} className="flex items-center gap-2 bg-indigo-600 text-white hover:bg-indigo-700">
                             <FileText className="h-4 w-4" /> Generate Vendor Invoice
                         </Button>
                     )}
                     {canCancel && (
-                        <Button onClick={() => onAction('cancel', order.id)} className="flex items-center gap-2 bg-red-50 text-red-700 hover:bg-red-100">
+                        <Button onClick={() => onAction('cancel', order.id)} className="flex items-center gap-2 bg-red-600 text-white hover:bg-red-700">
                             <XCircle className="h-4 w-4" /> Cancel
                         </Button>
                     )}
