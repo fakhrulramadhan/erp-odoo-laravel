@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\PurchaseOrder;
 use App\Models\StockLocation;
 use App\Models\StockPicking;
+use App\Models\Warehouse;
 use App\Repositories\PurchaseOrderRepository;
 use App\Services\Finance\FinanceService;
 use App\Services\Inventory\InventoryValuationService;
@@ -89,6 +90,8 @@ class PurchaseOrderService
             $data['created_by'] = auth()->id();
             $data['company_id'] ??= auth()->user()?->company_id
                 ?? \App\Models\Company::query()->orderBy('id')->value('id');
+            $data['warehouse_id'] ??= Warehouse::query()->where('is_main', true)->value('id')
+                ?? Warehouse::query()->orderBy('id')->value('id');
 
             $po = $this->repository->create($data);
 
@@ -248,12 +251,16 @@ class PurchaseOrderService
                 throw new \DomainException('An open stock picking already exists for this purchase order.');
             }
 
-            $warehouseId = $po->warehouse_id;
-            $destinationLocation = StockLocation::where('warehouse_id', $warehouseId)
-                ->where('type', 'internal')
-                ->first();
+            $warehouseId = $po->warehouse_id ?? Warehouse::query()->where('is_main', true)->value('id')
+                ?? Warehouse::query()->orderBy('id')->value('id');
+            $destinationLocation = $warehouseId
+                ? StockLocation::where('warehouse_id', $warehouseId)->where('type', 'internal')->first()
+                : null;
             if (!$destinationLocation) {
-                throw new \DomainException('No internal stock location found for the purchase order warehouse.');
+                $destinationLocation = StockLocation::where('type', 'internal')->orderBy('id')->first();
+            }
+            if (!$destinationLocation) {
+                throw new \DomainException('No internal stock location found. Create a stock location of type "internal" first.');
             }
 
             $picking = StockPicking::create([
