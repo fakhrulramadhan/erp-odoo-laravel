@@ -20,6 +20,12 @@ class AssetController extends Controller
     public function index(Request $request): JsonResponse
     {
         $filters = $request->only(['search', 'status', 'asset_category_id', 'branch_id', 'department_id']);
+
+        // The UI filters by asset_category_id; the table column is category_id.
+        if (!empty($filters['asset_category_id'])) {
+            $filters['category_id'] = $filters['asset_category_id'];
+        }
+
         $perPage = $request->input('per_page', 15);
         $paginator = $this->service->list($filters, $perPage);
         $paginator->getCollection()->transform(fn($a) => (new AssetResource($a))->resolve($request));
@@ -31,14 +37,18 @@ class AssetController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'asset_number' => 'nullable|string|max:50|unique:assets,asset_number',
-            'asset_category_id' => 'required|exists:asset_categories,id',
+            'asset_category_id' => 'required_without:category_id|exists:asset_categories,id',
+            'category_id' => 'required_without:asset_category_id|exists:asset_categories,id',
             'description' => 'nullable|string',
-            'acquisition_date' => 'required|date',
-            'acquisition_cost' => 'required|numeric|min:0',
+            'acquisition_date' => 'nullable|date',
+            'acquisition_cost' => 'required_without:purchase_value|numeric|min:0',
+            'purchase_value' => 'required_without:acquisition_cost|numeric|min:0',
+            'purchase_date' => 'nullable|date',
             'residual_value' => 'nullable|numeric|min:0',
             'useful_life_months' => 'required|integer|min:1',
             'depreciation_method' => 'required|string',
             'start_depreciation_date' => 'nullable|date',
+            'commission_date' => 'nullable|date',
             'branch_id' => 'nullable|exists:branches,id',
             'department_id' => 'nullable|exists:departments,id',
             'location' => 'nullable|string|max:255',
@@ -62,16 +72,21 @@ class AssetController extends Controller
             'name' => 'sometimes|required|string|max:255',
             'asset_number' => "nullable|string|max:50|unique:assets,asset_number,{$id}",
             'asset_category_id' => 'sometimes|required|exists:asset_categories,id',
+            'category_id' => 'sometimes|required|exists:asset_categories,id',
             'description' => 'nullable|string',
-            'acquisition_date' => 'sometimes|required|date',
+            'acquisition_date' => 'sometimes|nullable|date',
             'acquisition_cost' => 'sometimes|required|numeric|min:0',
+            'purchase_value' => 'sometimes|required|numeric|min:0',
+            'purchase_date' => 'sometimes|nullable|date',
             'residual_value' => 'nullable|numeric|min:0',
             'useful_life_months' => 'sometimes|required|integer|min:1',
             'depreciation_method' => 'sometimes|required|string',
+            'commission_date' => 'nullable|date',
             'branch_id' => 'nullable|exists:branches,id',
             'department_id' => 'nullable|exists:departments,id',
             'location' => 'nullable|string|max:255',
             'custodian_id' => 'nullable|exists:users,id',
+            'assigned_to' => 'nullable|exists:users,id',
             'serial_number' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
         ]);

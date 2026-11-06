@@ -21,7 +21,7 @@ class PurchaseOrder extends Model
         'warehouse_id', 'status', 'order_date', 'expected_date', 'effective_date',
         'exchange_rate', 'subtotal', 'tax_total', 'discount_total', 'total',
         'payment_term', 'notes', 'internal_notes',
-        'approved_by', 'approved_at', 'origin',
+        'approved_by', 'approved_at', 'sent_at', 'cancelled_by', 'cancelled_at', 'origin',
         'created_by', 'updated_by', 'deleted_by',
     ];
 
@@ -33,6 +33,8 @@ class PurchaseOrder extends Model
             'expected_date' => 'date',
             'effective_date' => 'date',
             'approved_at' => 'datetime',
+            'sent_at' => 'datetime',
+            'cancelled_at' => 'datetime',
             'exchange_rate' => 'decimal:6',
             'subtotal' => 'decimal:2',
             'tax_total' => 'decimal:2',

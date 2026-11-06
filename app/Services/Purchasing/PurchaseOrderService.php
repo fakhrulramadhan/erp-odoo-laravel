@@ -230,7 +230,7 @@ class PurchaseOrderService
         return DB::transaction(function () use ($id) {
             $po = $this->repository->findById($id);
             $po->transitionTo(PurchaseOrderStatus::Ordered);
-            $po->update(['sent_at' => now()]);
+            $po->update(['sent_at' => now(), 'updated_by' => Auth::id()]);
             return $this->repository->findWithLines($id);
         });
     }

@@ -27,13 +27,47 @@ class AssetService
         return $this->repository->findWithRelations($id);
     }
 
+    /**
+     * The API and UI speak acquisition_*; the table stores purchase_*.
+     */
+    protected function normalizeInput(array $data): array
+    {
+        if (array_key_exists('acquisition_cost', $data)) {
+            $data['purchase_value'] = $data['acquisition_cost'];
+            unset($data['acquisition_cost']);
+        }
+
+        if (array_key_exists('acquisition_date', $data)) {
+            $data['purchase_date'] = $data['acquisition_date'];
+            unset($data['acquisition_date']);
+        }
+
+        if (array_key_exists('salvage_value', $data)) {
+            $data['residual_value'] = $data['salvage_value'];
+            unset($data['salvage_value']);
+        }
+
+        if (array_key_exists('asset_category_id', $data)) {
+            $data['category_id'] = $data['asset_category_id'];
+            unset($data['asset_category_id']);
+        }
+
+        // No book_value column: current_value tracks the depreciated amount.
+        unset($data['book_value']);
+
+        return $data;
+    }
+
     public function create(array $data): Asset
     {
         return DB::transaction(function () use ($data) {
+            $data = $this->normalizeInput($data);
             $data['asset_number'] = $data['asset_number'] ?? $this->repository->getNextAssetNumber();
             $data['status'] = AssetStatus::Draft;
             $data['accumulated_depreciation'] = 0;
-            $data['book_value'] = $data['acquisition_cost'] ?? 0;
+            $data['current_value'] = $data['purchase_value'] ?? 0;
+            $data['company_id'] ??= auth()->user()?->company_id
+                ?? \App\Models\Company::query()->orderBy('id')->value('id');
             $data['created_by'] = auth()->id();
 
             $asset = $this->repository->create($data);
@@ -50,12 +84,13 @@ class AssetService
                 throw new \DomainException('Cannot edit an asset unless it is in draft status.');
             }
 
+            $data = $this->normalizeInput($data);
             $data['updated_by'] = auth()->id();
             $this->repository->update($id, $data);
 
-            // Recalculate book value
+            // Keep current_value aligned with accumulated depreciation.
             $asset->refresh();
-            $asset->update(['book_value' => $asset->getBookValue()]);
+            $asset->update(['current_value' => $asset->getBookValue()]);
 
             return $this->repository->findWithRelations($id);
         });
@@ -67,7 +102,7 @@ class AssetService
             $asset = $this->repository->findById($id);
             $asset->transitionTo(AssetStatus::Active);
             $asset->update([
-                'start_depreciation_date' => now(),
+                'commission_date' => $asset->commission_date ?? now()->toDateString(),
                 'updated_by' => auth()->id(),
             ]);
             return $this->repository->findWithRelations($id);
@@ -79,28 +114,30 @@ class AssetService
         return DB::transaction(function () use ($id, $data) {
             $asset = $this->repository->findById($id);
 
-            if ($asset->status !== AssetStatus::Active) {
-                throw new \DomainException('Only active assets can be transferred.');
+            if ($asset->status !== AssetStatus::Active && $asset->status !== AssetStatus::Transferred) {
+                throw new \DomainException('Only active or transferred assets can be transferred.');
             }
 
             $transfer = $asset->transfers()->create([
+                'transfer_number' => 'AT-' . str_pad((string) (\App\Models\AssetTransfer::max('id') + 1), 6, '0', STR_PAD_LEFT),
                 'transfer_date' => $data['transfer_date'] ?? now()->toDateString(),
-                'from_branch_id' => $asset->branch_id,
+                'from_location_id' => $asset->location_id,
+                'to_location_id' => $data['to_location_id'] ?? null,
                 'from_department_id' => $asset->department_id,
-                'to_branch_id' => $data['to_branch_id'],
-                'to_department_id' => $data['to_department_id'],
-                'to_location' => $data['to_location'] ?? null,
-                'to_custodian_id' => $data['to_custodian_id'] ?? null,
+                'to_department_id' => $data['to_department_id'] ?? null,
+                'from_employee_id' => $asset->assigned_to,
+                'to_employee_id' => $data['to_employee_id'] ?? null,
                 'reason' => $data['reason'] ?? null,
+                'status' => 'done',
                 'created_by' => auth()->id(),
             ]);
 
             $asset->update([
-                'branch_id' => $data['to_branch_id'],
+                'location_id' => $data['to_location_id'] ?? $asset->location_id,
                 'department_id' => $data['to_department_id'] ?? $asset->department_id,
-                'location' => $data['to_location'] ?? $asset->location,
-                'custodian_id' => $data['to_custodian_id'] ?? $asset->custodian_id,
+                'assigned_to' => $data['to_employee_id'] ?? $asset->assigned_to,
                 'status' => AssetStatus::Transferred,
+                'updated_by' => auth()->id(),
             ]);
 
             return $transfer;
@@ -151,19 +188,17 @@ class AssetService
 
             $depreciation = $asset->depreciations()->create([
                 'depreciation_date' => now()->toDateString(),
-                'period' => now()->format('Y-m'),
-                'method' => $asset->depreciation_method,
-                'amount' => $depreciationAmount,
-                'accumulated_before' => (float) $asset->accumulated_depreciation,
-                'accumulated_after' => (float) $asset->accumulated_depreciation + $depreciationAmount,
-                'book_value_before' => $remainingBookValue,
-                'book_value_after' => $remainingBookValue - $depreciationAmount,
-                'created_by' => auth()->id(),
-            ]);
-
-            $asset->update([
+                'period_number' => $asset->depreciations()->count() + 1,
+                'depreciation_amount' => $depreciationAmount,
                 'accumulated_depreciation' => (float) $asset->accumulated_depreciation + $depreciationAmount,
                 'book_value' => $remainingBookValue - $depreciationAmount,
+                'status' => 'posted',
+                'created_by' => auth()->id(),
+            ]);
+            $asset->update([
+                'accumulated_depreciation' => (float) $asset->accumulated_depreciation + $depreciationAmount,
+                'current_value' => $remainingBookValue - $depreciationAmount,
+                'updated_by' => auth()->id(),
             ]);
 
             // Create depreciation journal

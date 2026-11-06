@@ -41,7 +41,7 @@ enum AssetStatus: string
             self::Draft => [self::Active],
             self::Active => [self::InMaintenance, self::Transferred, self::Disposed, self::Retired],
             self::InMaintenance => [self::Active, self::Disposed],
-            self::Transferred => [self::Active],
+            self::Transferred => [self::Active, self::InMaintenance, self::Disposed, self::Retired],
             self::Disposed => [],
             self::Retired => [],
         };

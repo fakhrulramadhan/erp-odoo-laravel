@@ -113,20 +113,24 @@ class ManufacturingDashboardService
 
     protected function getAssetSummary(): array
     {
+        $active = Asset::where('status', \App\Enums\AssetStatus::Active);
+        $purchaseTotal = (float) Asset::sum('purchase_value');
+        $accumulatedTotal = (float) Asset::sum('accumulated_depreciation');
+
         return [
             'total' => Asset::count(),
-            'active' => Asset::where('status', \App\Enums\AssetStatus::Active)->count(),
-            'total_acquisition_cost' => (float) Asset::sum('acquisition_cost'),
-            'total_accumulated_depreciation' => (float) Asset::sum('accumulated_depreciation'),
-            'total_book_value' => (float) Asset::sum('book_value'),
-            'by_category' => Asset::where('status', \App\Enums\AssetStatus::Active)
+            'active' => (clone $active)->count(),
+            'total_acquisition_cost' => $purchaseTotal,
+            'total_accumulated_depreciation' => $accumulatedTotal,
+            'total_book_value' => $purchaseTotal - $accumulatedTotal,
+            'by_category' => (clone $active)
                 ->select(
-                    'asset_category_id',
+                    'category_id',
                     DB::raw('count(*) as count'),
-                    DB::raw('sum(acquisition_cost) as total_cost'),
-                    DB::raw('sum(book_value) as total_book_value')
+                    DB::raw('sum(purchase_value) as total_cost'),
+                    DB::raw('sum(purchase_value - accumulated_depreciation) as total_book_value')
                 )
-                ->groupBy('asset_category_id')
+                ->groupBy('category_id')
                 ->with('category:id,name')
                 ->get()
                 ->toArray(),

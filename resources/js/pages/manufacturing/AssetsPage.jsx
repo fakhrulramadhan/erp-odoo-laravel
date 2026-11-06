@@ -237,15 +237,15 @@ function AssetForm({ isEdit, itemId, categories, branches, onBack, onSave, savin
     const [form, setForm] = useState({ name: '', asset_category_id: '', acquisition_date: '', acquisition_value: 0, salvage_value: 0, depreciation_method: 'straight_line', useful_life_months: 60, location: '', notes: '' });
     const [loadingForm, setLoadingForm] = useState(isEdit);
 
-    useState(() => {
+    useEffect(() => {
         if (isEdit && itemId) {
             assetsApi.show(itemId).then(res => {
                 const d = res.data.data;
-                setForm({ name: d.name || '', asset_category_id: d.asset_category_id || '', acquisition_date: d.acquisition_date || '', acquisition_value: d.acquisition_value || 0, salvage_value: d.salvage_value || 0, depreciation_method: d.depreciation_method || 'straight_line', useful_life_months: d.useful_life_months || 60, location: d.location || '', notes: d.notes || '' });
+                setForm({ name: d.name || '', asset_category_id: d.asset_category_id || '', acquisition_date: d.acquisition_date || '', acquisition_value: d.acquisition_value ?? d.acquisition_cost ?? 0, salvage_value: d.salvage_value ?? d.residual_value ?? 0, depreciation_method: d.depreciation_method || 'straight_line', useful_life_months: d.useful_life_months || 60, location: d.location || '', notes: d.notes || '' });
                 setLoadingForm(false);
             }).catch(() => setLoadingForm(false));
         }
-    });
+    }, [isEdit, itemId]);
 
     if (loadingForm) return <div className="flex justify-center py-20"><Spinner /></div>;
     const errorMessages = error?.errors ? Object.values(error.errors).flat() : [];
@@ -257,7 +257,21 @@ function AssetForm({ isEdit, itemId, categories, branches, onBack, onSave, savin
                 <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Asset' : 'New Asset'}</h1>
             </div>
             {error && <div className="rounded-lg bg-red-50 p-4 text-red-700 text-sm"><p className="font-medium">{error.message}</p>{errorMessages.length > 0 && <ul className="mt-1 list-disc list-inside">{errorMessages.map((m, i) => <li key={i}>{m}</li>)}</ul>}</div>}
-            <form onSubmit={async (e) => { e.preventDefault(); await onSave(form); }} className="space-y-6">
+            <form onSubmit={async (e) => {
+                e.preventDefault();
+                // The API expects acquisition_* / salvage_value naming.
+                await onSave({
+                    name: form.name,
+                    asset_category_id: form.asset_category_id,
+                    acquisition_date: form.acquisition_date,
+                    acquisition_cost: Number(form.acquisition_value) || 0,
+                    residual_value: Number(form.salvage_value) || 0,
+                    depreciation_method: form.depreciation_method,
+                    useful_life_months: Number(form.useful_life_months) || 60,
+                    location: form.location,
+                    notes: form.notes,
+                });
+            }} className="space-y-6">
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div><label className="block text-sm font-medium text-gray-700 mb-1">Name *</label><input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required /></div>

@@ -205,7 +205,7 @@ class ManufacturingReportService
         $query = Asset::query()->with('category:id,name');
 
         if (!empty($filters['asset_category_id'])) {
-            $query->where('asset_category_id', $filters['asset_category_id']);
+            $query->where('category_id', $filters['asset_category_id']);
         }
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -222,24 +222,24 @@ class ManufacturingReportService
                     'asset_number' => $a->asset_number,
                     'name' => $a->name,
                     'category' => $a->category?->name,
-                    'acquisition_date' => $a->acquisition_date,
-                    'acquisition_cost' => (float) $a->acquisition_cost,
+                    'acquisition_date' => $a->purchase_date?->toDateString(),
+                    'acquisition_cost' => (float) $a->purchase_value,
                     'accumulated_depreciation' => (float) $a->accumulated_depreciation,
-                    'book_value' => (float) $a->book_value,
+                    'book_value' => $a->getBookValue(),
                     'status' => $a->status->label(),
-                    'depreciation_method' => $a->depreciation_method->label(),
+                    'depreciation_method' => $a->depreciation_method,
                     'useful_life_months' => $a->useful_life_months,
                 ];
             }),
             'summary' => [
                 'total_assets' => $assets->count(),
-                'total_acquisition_cost' => (float) $assets->sum('acquisition_cost'),
+                'total_acquisition_cost' => (float) $assets->sum('purchase_value'),
                 'total_accumulated_depreciation' => (float) $assets->sum('accumulated_depreciation'),
-                'total_book_value' => (float) $assets->sum('book_value'),
-                'by_category' => $assets->groupBy('asset_category_id')->map(fn ($group) => [
+                'total_book_value' => (float) $assets->sum(fn ($a) => $a->getBookValue()),
+                'by_category' => $assets->groupBy('category_id')->map(fn ($group) => [
                     'count' => $group->count(),
-                    'acquisition_cost' => (float) $group->sum('acquisition_cost'),
-                    'book_value' => (float) $group->sum('book_value'),
+                    'acquisition_cost' => (float) $group->sum('purchase_value'),
+                    'book_value' => (float) $group->sum(fn ($a) => $a->getBookValue()),
                 ])->toArray(),
             ],
         ];

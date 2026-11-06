@@ -92,4 +92,28 @@ class Asset extends Model
     {
         return round((float) $this->purchase_value - (float) $this->accumulated_depreciation, 2);
     }
+
+    public function getNetBookValue(): float
+    {
+        return $this->getBookValue();
+    }
+
+    /**
+     * Display-only alias so API consumers keep the acquisition_* naming
+     * while the table stores purchase_*.
+     */
+    public function getAcquisitionValueAttribute(): float
+    {
+        return (float) $this->purchase_value;
+    }
+
+    public function getSalvageValueAttribute(): float
+    {
+        return (float) $this->residual_value;
+    }
+
+    public function getDepreciationMethodLabelAttribute(): string
+    {
+        return ucwords(str_replace('_', ' ', (string) $this->depreciation_method));
+    }
 }
