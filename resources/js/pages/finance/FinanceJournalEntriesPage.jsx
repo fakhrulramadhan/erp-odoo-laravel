@@ -147,16 +147,80 @@ export default function FinanceJournalEntriesPage() {
             <Card title="Recent Journal Entries" subtitle="Latest transactions">
                 <div className="space-y-3">
                     {entries.map((entry) => (
-                        <div key={entry.id} className="rounded-lg border p-4">
-                            <div className="flex items-center justify-between">
+                        <div key={entry.id} className="rounded-lg border border-gray-200 overflow-hidden">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4">
                                 <div>
                                     <p className="font-semibold text-gray-900">{entry.entry_number}</p>
                                     <p className="text-sm text-gray-500">{entry.description || 'No description'}</p>
+                                    <p className="text-xs text-gray-400 mt-0.5">
+                                        {entry.entry_date}{entry.reference ? ` • Ref: ${entry.reference}` : ''}{entry.journal?.name ? ` • ${entry.journal.name}` : ''}
+                                    </p>
                                 </div>
-                                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">{entry.status}</span>
+                                <div className="flex items-center gap-3">
+                                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${entry.status === 'posted' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                                        {entry.status}
+                                    </span>
+                                    {entry.status === 'draft' && (
+                                        <Button
+                                            variant="secondary"
+                                            onClick={async () => {
+                                                try {
+                                                    await api.post(`/v1/finance/journal-entries/${entry.id}/post`);
+                                                    loadData();
+                                                } catch (error) {
+                                                    alert(error.response?.data?.message || 'Unable to post journal entry.');
+                                                }
+                                            }}
+                                        >
+                                            Post
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
+                            {(entry.lines || []).length > 0 && (
+                                <div className="overflow-x-auto border-t border-gray-100">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left font-medium text-gray-600">Account</th>
+                                                <th className="px-4 py-2 text-left font-medium text-gray-600">Description</th>
+                                                <th className="px-4 py-2 text-right font-medium text-gray-600">Debit</th>
+                                                <th className="px-4 py-2 text-right font-medium text-gray-600">Credit</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {entry.lines.map((line) => (
+                                                <tr key={line.id} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-2 text-gray-800">
+                                                        {line.account ? `${line.account.code} - ${line.account.name}` : `Account #${line.account_id}`}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-gray-600">{line.description || '-'}</td>
+                                                    <td className="px-4 py-2 text-right font-medium text-gray-900">
+                                                        {Number(line.debit_amount) > 0 ? Number(line.debit_amount).toLocaleString('id-ID', { minimumFractionDigits: 2 }) : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-right font-medium text-gray-900">
+                                                        {Number(line.credit_amount) > 0 ? Number(line.credit_amount).toLocaleString('id-ID', { minimumFractionDigits: 2 }) : '-'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot className="bg-gray-50">
+                                            <tr>
+                                                <td colSpan={2} className="px-4 py-2 text-right font-medium text-gray-600">Total</td>
+                                                <td className="px-4 py-2 text-right font-semibold text-gray-900">
+                                                    {entry.lines.reduce((sum, l) => sum + Number(l.debit_amount || 0), 0).toLocaleString('id-ID', { minimumFractionDigits: 2 })}
+                                                </td>
+                                                <td className="px-4 py-2 text-right font-semibold text-gray-900">
+                                                    {entry.lines.reduce((sum, l) => sum + Number(l.credit_amount || 0), 0).toLocaleString('id-ID', { minimumFractionDigits: 2 })}
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     ))}
+                    {entries.length === 0 && <p className="py-8 text-center text-gray-400">No journal entries yet.</p>}
                 </div>
             </Card>
         </div>

@@ -33,6 +33,7 @@ export default function AssetsPage() {
     const [selectedId, setSelectedId] = useState(null);
     const [detail, setDetail] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null);
+    const [disposeForm, setDisposeForm] = useState({ disposal_amount: '', disposal_reason: '' });
     const [categories, setCategories] = useState([]);
     const [branches, setBranches] = useState([]);
 
@@ -51,12 +52,26 @@ export default function AssetsPage() {
         try { const res = await assetsApi.show(id); setDetail(res.data.data); setSelectedId(id); setView('detail'); } catch {}
     };
 
-    const handleAction = (action, id) => setConfirmAction({ action, id });
+    const handleAction = (action, id) => {
+        if (action === 'dispose') {
+            setDisposeForm({ disposal_amount: '', disposal_reason: '' });
+        }
+        setConfirmAction({ action, id });
+    };
     const executeAction = async () => {
         if (!confirmAction) return;
         const { action, id } = confirmAction;
-        const map = { activate: assetsApi.activate, depreciate: assetsApi.depreciate };
-        const result = await performAction(map[action], id);
+        let result;
+        if (action === 'dispose') {
+            const payload = {
+                disposal_amount: disposeForm.disposal_amount === '' ? 0 : Number(disposeForm.disposal_amount),
+                disposal_reason: disposeForm.disposal_reason || null,
+            };
+            result = await performAction((assetId) => assetsApi.dispose(assetId, payload), id);
+        } else {
+            const map = { activate: assetsApi.activate, depreciate: assetsApi.depreciate };
+            result = await performAction(map[action], id);
+        }
         if (result && view === 'detail' && id === selectedId) loadDetail(id);
         setConfirmAction(null);
     };
@@ -91,6 +106,7 @@ export default function AssetsPage() {
                         {s === 'draft' && <Button onClick={() => { setSelectedId(detail.id); setView('edit'); }} className="flex items-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100"><Edit2 className="h-4 w-4" /> Edit</Button>}
                         {s === 'draft' && <Button onClick={() => handleAction('activate', detail.id)} className="flex items-center gap-2 bg-green-50 text-green-700 hover:bg-green-100"><Package className="h-4 w-4" /> Activate</Button>}
                         {s === 'active' && <Button onClick={() => handleAction('depreciate', detail.id)} className="flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"><BarChart3 className="h-4 w-4" /> Depreciate</Button>}
+                        {(s === 'active' || s === 'transferred') && <Button onClick={() => handleAction('dispose', detail.id)} className="flex items-center gap-2 bg-orange-50 text-orange-700 hover:bg-orange-100"><TrendingDown className="h-4 w-4" /> Dispose</Button>}
                         {s === 'draft' && <Button onClick={() => handleDelete(detail.id)} className="flex items-center gap-2 bg-red-50 text-red-700 hover:bg-red-100"><Trash2 className="h-4 w-4" /> Delete</Button>}
                     </div>
                 </div>
@@ -104,6 +120,9 @@ export default function AssetsPage() {
                     <InfoCard label="Useful Life (months)" value={detail.useful_life_months || '-'} />
                     <InfoCard label="Monthly Depreciation" value={formatCurrency(detail.monthly_depreciation)} />
                     <InfoCard label="Book Value" value={formatCurrency(detail.book_value)} />
+                    {detail.disposal_date && <InfoCard label="Disposal Date" value={formatDate(detail.disposal_date)} />}
+                    {detail.disposal_amount != null && <InfoCard label="Disposal Amount" value={formatCurrency(detail.disposal_amount)} />}
+                    {detail.disposal_reason && <InfoCard label="Disposal Reason" value={detail.disposal_reason} />}
                 </div>
                 {/* Depreciation History */}
                 {detail.depreciations && detail.depreciations.length > 0 && (
@@ -179,7 +198,29 @@ export default function AssetsPage() {
             )}
             {confirmAction && (
                 <Modal onClose={() => setConfirmAction(null)} title={`Confirm ${confirmAction.action}`}>
-                    <p className="text-gray-600 mb-4">Are you sure you want to <strong>{confirmAction.action}</strong> this asset?</p>
+                    {confirmAction.action === 'dispose' ? (
+                        <>
+                            <p className="text-gray-600 mb-4">Disposing this asset posts a journal that removes its cost and accumulated depreciation, records any cash received, and books the resulting gain or loss.</p>
+                            <div className="space-y-3 mb-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Disposal Amount (cash received)</label>
+                                    <input type="number" step="0.01" min="0" value={disposeForm.disposal_amount}
+                                        onChange={(e) => setDisposeForm(p => ({ ...p, disposal_amount: e.target.value }))}
+                                        placeholder="0.00"
+                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                                    <input type="text" value={disposeForm.disposal_reason}
+                                        onChange={(e) => setDisposeForm(p => ({ ...p, disposal_reason: e.target.value }))}
+                                        placeholder="e.g. Sold, fully depreciated"
+                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <p className="text-gray-600 mb-4">Are you sure you want to <strong>{confirmAction.action}</strong> this asset?</p>
+                    )}
                     <div className="flex justify-end gap-3">
                         <Button onClick={() => setConfirmAction(null)} className="bg-gray-100 text-gray-700 hover:bg-gray-200">Cancel</Button>
                         <Button onClick={executeAction} disabled={saving}>{saving ? 'Processing...' : 'Confirm'}</Button>

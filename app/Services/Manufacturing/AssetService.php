@@ -119,7 +119,7 @@ class AssetService
             $asset->transitionTo(AssetStatus::Disposed);
             $asset->update([
                 'disposal_date' => now()->toDateString(),
-                'disposal_amount' => $data['disposal_amount'] ?? 0,
+                'disposal_value' => $data['disposal_amount'] ?? 0,
                 'disposal_reason' => $data['disposal_reason'] ?? null,
                 'updated_by' => auth()->id(),
             ]);

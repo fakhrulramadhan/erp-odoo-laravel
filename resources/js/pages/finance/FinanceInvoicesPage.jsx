@@ -72,16 +72,48 @@ export default function FinanceInvoicesPage() {
             <Card title="Invoices" subtitle="Latest invoices">
                 <div className="space-y-3">
                     {invoices.map((invoice) => (
-                        <div key={invoice.id} className="rounded-lg border p-4">
-                            <div className="flex items-center justify-between">
+                        <div key={invoice.id} className="rounded-lg border border-gray-200 p-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                 <div>
                                     <p className="font-semibold text-gray-900">{invoice.invoice_number}</p>
-                                    <p className="text-sm text-gray-500">{invoice.invoice_type} • {invoice.status}</p>
+                                    <p className="text-sm text-gray-500">
+                                        {invoice.invoice_type} • {invoice.status}
+                                        {invoice.vendor?.name ? ` • ${invoice.vendor.name}` : ''}
+                                        {invoice.customer?.name ? ` • ${invoice.customer.name}` : ''}
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-0.5">
+                                        {invoice.invoice_date}
+                                        {Number(invoice.balance_amount) > 0 ? ` • Balance: ${Number(invoice.balance_amount).toLocaleString('id-ID', { minimumFractionDigits: 2 })}` : ''}
+                                    </p>
                                 </div>
-                                <p className="text-sm font-semibold text-gray-900">{invoice.total_amount}</p>
+                                <div className="flex items-center gap-3">
+                                    <p className="text-sm font-semibold text-gray-900">
+                                        {Number(invoice.total_amount || 0).toLocaleString('id-ID', { minimumFractionDigits: 2 })}
+                                    </p>
+                                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${invoice.status === 'posted' ? 'bg-green-100 text-green-700' : invoice.status === 'paid' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
+                                        {invoice.status}
+                                    </span>
+                                    {invoice.status === 'draft' && (
+                                        <Button
+                                            variant="secondary"
+                                            onClick={async () => {
+                                                if (!window.confirm(`Post invoice ${invoice.invoice_number}? Posted invoices count towards payables/receivables.`)) return;
+                                                try {
+                                                    await api.post(`/v1/finance/invoices/${invoice.id}/post`);
+                                                    loadData();
+                                                } catch (error) {
+                                                    alert(error.response?.data?.message || 'Unable to post invoice.');
+                                                }
+                                            }}
+                                        >
+                                            Post
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     ))}
+                    {invoices.length === 0 && <p className="py-8 text-center text-gray-400">No invoices yet.</p>}
                 </div>
             </Card>
         </div>
